@@ -1,0 +1,117 @@
+{
+  "users": [
+    {
+      "name": "Ankit Vishwakarma",
+      "role": "Senior Developer",
+      "skills": [
+        "React.js",
+        "TypeScript",
+        "Bootstrap",
+        ".NET",
+        "WebSocket",
+        "Azure Container Apps"
+      ],
+      "experience": "3.5 years of experience in frontend development focusing on React.js and .NET integration.",
+      "preferences": {
+        "responseStyle": "concise, professional, and focused on code examples",
+        "tone": "friendly and confident"
+      }
+    },
+    {
+      "name": "Aman Ojha",
+      "role": "Junior Developer",
+      "skills": [
+       "TypeScript",
+        "Bootstrap",
+        ".NET",
+        "WebSocket",
+        "Azure Container Apps"
+      ],
+      "experience": "3 years of backend development experience specializing in REST APIs and containerized applications.",
+      "preferences": {
+        "responseStyle": "detailed and technical",
+        "tone": "professional and explanatory"
+      }
+    },
+    {
+      "name": "Sachin Baghel",
+      "role": "Technical Manager in Newvision",
+      "skills": [
+        "Azure DevOps",
+        "Git",
+        ".NET",
+        "Azure Functions",
+        "Angular",
+        "SQL",
+        "Azure Container Apps",
+        "Node.js",
+        "React.js",
+        "TypeScript",
+        "Bootstrap",
+        "WebSocket",
+        "Docker",
+        "Kubernetes",
+        "CI/CD",
+        "Terraform",
+        "Linux"
+      ],
+     "experience": "Over 12 years of experience in software engineering, cloud infrastructure, and technical leadership. Sachin has led cross-functional teams in designing and delivering large-scale enterprise applications using .NET, Azure, and modern frontend frameworks like React and Angular. He specializes in cloud migration strategies, DevOps pipeline automation, and container-based deployments using Docker and Kubernetes. Under his leadership at NewVision, he has implemented scalable CI/CD pipelines with Azure DevOps, optimized cloud costs through container orchestration, and ensured high availability and security compliance for mission-critical systems. He is also deeply involved in mentoring developers, conducting architectural reviews, and driving best practices across development and deployment lifecycles.",
+       "preferences": {
+        "responseStyle": "structured and step-by-step",
+        "tone": "informative and confident"
+      }
+    },
+     {
+      "name": "Kapil Godani",
+      "role": "Chief Executive Officer at NewVision Software",
+      "skills": [
+        "Leadership",
+        "Business Strategy",
+        "Enterprise Software",
+        "Cloud Transformation",
+        "Digital Innovation",
+        "Team Building",
+        "Client Relations",
+        "Project Governance",
+        "Technology Partnerships",
+        "Product Development",
+        "Agile Management",
+        "Strategic Planning",
+        "Decision Making",
+        "Corporate Growth",
+        "Innovation Management"
+      ],
+      "experience": "Kapil Godani is the Chief Executive Officer at NewVision Software, where he has been instrumental in driving the company’s growth, innovation, and digital transformation journey. With over 20 years of experience in the software industry, Kapil has built NewVision into a trusted technology partner delivering cutting-edge enterprise and cloud-based solutions for global clients. He combines deep business acumen with a strong understanding of modern technologies, including cloud computing, DevOps, and AI-driven digital ecosystems. Kapil has overseen strategic partnerships with Fortune 500 clients, expanding NewVision’s footprint across multiple domains such as finance, healthcare, and manufacturing. His leadership philosophy emphasizes innovation, collaboration, and continuous learning. Under his guidance, NewVision has implemented robust engineering practices, scaled its workforce across multiple geographies, and adopted a customer-centric approach to product delivery. Kapil’s vision focuses on enabling organizations to achieve operational excellence through technology modernization and strategic innovation initiatives. He is also passionate about mentoring emerging leaders, promoting ethical business values, and fostering a culture of excellence within the organization.",
+      "preferences": {
+        "responseStyle": "visionary and inspiring",
+        "tone": "motivational and executive"
+      }
+    },
+    {
+      "name": "Balan Ramaswamy",
+      "role": "Chief Operating Officer at NewVision Software",
+      "skills": [
+        "Operations Management",
+        "Strategic Planning",
+        "Process Optimization",
+        "Delivery Management",
+        "Business Transformation",
+        "Leadership",
+        "Client Engagement",
+        "Performance Management",
+        "Resource Planning",
+        "Agile and Scrum",
+        "Change Management",
+        "Risk Management",
+        "Cross-Functional Collaboration",
+        "Technology Strategy",
+        "Business Development"
+      ],
+      "experience": "Balan Ramaswamy serves as the Chief Operating Officer (COO) at NewVision Software, where he oversees end-to-end operations, delivery excellence, and organizational growth. With more than 18 years of experience in IT operations, project governance, and enterprise delivery management, Balan is known for his results-oriented approach and ability to translate strategy into execution. He has played a crucial role in scaling NewVision’s operational capabilities, driving efficiency through automation, and implementing robust delivery frameworks across multiple technology verticals. Balan focuses on building a culture of accountability, continuous improvement, and operational transparency. Under his operational leadership, NewVision has achieved significant improvements in project delivery timelines, customer satisfaction, and resource optimization. His expertise lies in bridging business objectives with technological execution, ensuring every initiative contributes directly to measurable outcomes. Balan is also deeply involved in risk mitigation strategies, compliance frameworks, and driving transformation programs that enhance organizational agility. Passionate about people and process synergy, he continues to champion initiatives that promote innovation, leadership development, and operational excellence within the company.",
+      "preferences": {
+        "responseStyle": "executive and strategic",
+        "tone": "authoritative yet approachable"
+      }
+    }
+  ]
+}

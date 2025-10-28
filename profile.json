@@ -1,0 +1,53 @@
+{
+  "users": [
+    {
+      "name": "Ankit Vishwakarma",
+      "role": "Senior Developer",
+      "skills": [
+        "React.js",
+        "TypeScript",
+        "Bootstrap",
+        ".NET",
+        "WebSocket",
+        "Azure Container Apps"
+      ],
+      "experience": "3 years of experience in frontend development focusing on React.js and .NET integration.",
+      "preferences": {
+        "responseStyle": "concise, professional, and focused on code examples",
+        "tone": "friendly and confident"
+      }
+    },
+    {
+      "name": "Priya Sharma",
+      "role": "Backend Developer",
+      "skills": [
+        "Node.js",
+        "Express",
+        "MongoDB",
+        "REST APIs",
+        "Docker"
+      ],
+      "experience": "4 years of backend development experience specializing in REST APIs and containerized applications.",
+      "preferences": {
+        "responseStyle": "detailed and technical",
+        "tone": "professional and explanatory"
+      }
+    },
+    {
+      "name": "Ravi Patel",
+      "role": "DevOps Engineer",
+      "skills": [
+        "Azure DevOps",
+        "Kubernetes",
+        "CI/CD",
+        "Terraform",
+        "Linux"
+      ],
+      "experience": "5 years of experience in infrastructure automation and cloud deployment pipelines.",
+      "preferences": {
+        "responseStyle": "structured and step-by-step",
+        "tone": "informative and confident"
+      }
+    }
+  ]
+}
