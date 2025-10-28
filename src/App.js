@@ -6,7 +6,6 @@ import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import profiles from "./profile.json"; // 👈 import your profiles
 
-
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
 
@@ -40,7 +39,9 @@ If a question is not related to these people, answer normally.`,
       };
 
       // 🔹 Send request to LM Studio
-      const res = await fetch("http://localhost:1234/v1/chat/completions", {
+      // const res = await fetch("http://localhost:1234/v1/chat/completions", {
+        const res = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions", {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
