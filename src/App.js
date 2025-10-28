@@ -17,7 +17,7 @@ function App() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const chatEndRef = useRef(null);
 
-  // Load from localStorage
+  // 🔹 Load chats from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("chatSessions");
     if (stored) {
@@ -27,12 +27,12 @@ function App() {
     }
   }, []);
 
-  // Auto scroll chat bottom
+  // 🔹 Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions, activeSessionId]);
 
-  // Save to localStorage
+  // 🔹 Persist chats
   useEffect(() => {
     localStorage.setItem("chatSessions", JSON.stringify(sessions));
   }, [sessions]);
@@ -63,6 +63,7 @@ function App() {
     );
   };
 
+  // 🔥 STREAMING RESPONSE HANDLER
   const handleSend = async () => {
     if (!input.trim() || !activeSession) return;
 
@@ -92,23 +93,71 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "google/gemma-3-1b",
+            stream: true, // ✅ enables streaming
             messages: [systemPrompt, ...activeSession.messages, userMessage],
           }),
         }
       );
 
-      const data = await res.json();
-      const reply =
-        data?.choices?.[0]?.message?.content || "⚠️ No response from model.";
-      const botMessage = { role: "assistant", content: reply };
+      if (!res.ok || !res.body) throw new Error("No stream received.");
 
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      let fullMessage = "";
+      let done = false;
+
+      // Add placeholder message for streaming
       setSessions((prev) =>
         prev.map((s) =>
           s.id === activeSessionId
-            ? { ...s, messages: [...s.messages, botMessage] }
+            ? { ...s, messages: [...s.messages, { role: "assistant", content: "" }] }
             : s
         )
       );
+
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        const chunk = decoder.decode(value, { stream: true });
+
+        const lines = chunk
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line !== "");
+
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            const data = line.replace("data:", "").trim();
+            if (data === "[DONE]") {
+              done = true;
+              break;
+            }
+            try {
+              const json = JSON.parse(data);
+              const token = json.choices?.[0]?.delta?.content || "";
+              if (token) {
+                fullMessage += token;
+                // Update latest assistant message
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.id === activeSessionId
+                      ? {
+                          ...s,
+                          messages: s.messages.map((m, idx) =>
+                            idx === s.messages.length - 1
+                              ? { ...m, content: fullMessage }
+                              : m
+                          ),
+                        }
+                      : s
+                  )
+                );
+              }
+            } catch {}
+          }
+        }
+      }
 
       if (activeSession.title === "New Chat" && input.trim()) {
         renameChat(activeSessionId, input.slice(0, 30));
@@ -230,7 +279,6 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           ))}
         </div>
         <div
-          
           style={{
             background: "#343541",
             color: "white",
@@ -238,17 +286,15 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             padding: "12px",
             margin: "12px",
             borderRadius: "6px",
-            cursor: "pointer",
             fontWeight: "500",
           }}
         >
-          NewVision Chatboard v1.0
+          NewVision Chatboard v1.1
         </div>
       </aside>
 
-      {/* Main Chat Area */}
+      {/* Main Chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        {/* Header */}
         <header
           style={{
             background: "#202123",
@@ -260,10 +306,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
-          🧠 Gemma 3 1B — NewVision Chatboard
+          🧠 NewVision Chatboard
         </header>
 
-        {/* Messages */}
         <div
           style={{
             flex: 1,
@@ -292,26 +337,6 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 lineHeight: "1.5",
               }}
             >
-              {/* Copy button for assistant messages */}
-              {msg.role === "assistant" && (
-                <button
-                  onClick={() => handleCopy(msg.content, i)}
-                  style={{
-                    position: "absolute",
-                    top: "6px",
-                    right: "8px",
-                    border: "none",
-                    background: "transparent",
-                    color: "#888",
-                    fontSize: "0.9rem",
-                    cursor: "pointer",
-                  }}
-                  title="Copy"
-                >
-                  {/* {copiedIndex === i ? "✅ Copied" : "📋 Copy"} */}
-                </button>
-              )}
-
               {msg.role === "assistant" ? (
                 <ReactMarkdown
                   children={msg.content}
@@ -384,7 +409,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 maxWidth: "75%",
               }}
             >
-              Gemma is typing...
+           Typing...
             </div>
           )}
 
