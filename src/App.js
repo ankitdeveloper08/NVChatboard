@@ -229,6 +229,21 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             </div>
           ))}
         </div>
+        <div
+          
+          style={{
+            background: "#343541",
+            color: "white",
+            border: "none",
+            padding: "12px",
+            margin: "12px",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: "500",
+          }}
+        >
+          NewVision Chatboard v1.0
+        </div>
       </aside>
 
       {/* Main Chat Area */}
