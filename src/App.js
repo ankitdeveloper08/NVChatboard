@@ -40,7 +40,8 @@ If a question is not related to these people, answer normally.`,
       };
 
       // 🔹 Send request to LM Studio
-      const res = await fetch("http://localhost:1234/v1/chat/completions", {
+      // const res = await fetch("http://localhost:1234/v1/chat/completions", {
+      const res = await fetch("http://192.168.31.200:1234/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
