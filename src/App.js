@@ -5,6 +5,7 @@ import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import profiles from "./profile.json";
+import "./App.css";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -17,7 +18,7 @@ function App() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const chatEndRef = useRef(null);
 
-  // 🔹 Load chats from localStorage
+  // Load stored chats
   useEffect(() => {
     const stored = localStorage.getItem("chatSessions");
     if (stored) {
@@ -27,12 +28,12 @@ function App() {
     }
   }, []);
 
-  // 🔹 Scroll to bottom
+  // Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions, activeSessionId]);
 
-  // 🔹 Persist chats
+  // Persist chats
   useEffect(() => {
     localStorage.setItem("chatSessions", JSON.stringify(sessions));
   }, [sessions]);
@@ -63,7 +64,6 @@ function App() {
     );
   };
 
-  // 🔥 STREAMING RESPONSE HANDLER
   const handleSend = async () => {
     if (!input.trim() || !activeSession) return;
 
@@ -93,7 +93,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "google/gemma-3-1b",
-            stream: true, // ✅ enables streaming
+            stream: true,
             messages: [systemPrompt, ...activeSession.messages, userMessage],
           }),
         }
@@ -103,11 +103,10 @@ If the user asks about them, answer using this info. Otherwise, respond normally
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
-
       let fullMessage = "";
       let done = false;
 
-      // Add placeholder message for streaming
+      // Add empty assistant message while streaming
       setSessions((prev) =>
         prev.map((s) =>
           s.id === activeSessionId
@@ -138,7 +137,6 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               const token = json.choices?.[0]?.delta?.content || "";
               if (token) {
                 fullMessage += token;
-                // Update latest assistant message
                 setSessions((prev) =>
                   prev.map((s) =>
                     s.id === activeSessionId
@@ -202,6 +200,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
     }
   };
 
+  // --- JSX ---
   return (
     <div
       style={{
@@ -219,6 +218,10 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           color: "white",
           display: "flex",
           flexDirection: "column",
+          transition: "width 0.3s ease",
+          overflow: "hidden",
+          position: "relative",
+          zIndex: 2,
         }}
       >
         <button
@@ -232,6 +235,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             borderRadius: "6px",
             cursor: "pointer",
             fontWeight: "500",
+            whiteSpace: "nowrap",
           }}
         >
           + New Chat
@@ -245,8 +249,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                background:
-                  s.id === activeSessionId ? "#343541" : "transparent",
+                background: s.id === activeSessionId ? "#343541" : "transparent",
                 padding: "10px 14px",
                 margin: "4px 8px",
                 borderRadius: "6px",
@@ -258,9 +261,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 onClick={() => setActiveSessionId(s.id)}
                 title={s.title}
               >
-                {s.title.length > 25
-                  ? s.title.slice(0, 25) + "..."
-                  : s.title}
+                {s.title.length > 25 ? s.title.slice(0, 25) + "..." : s.title}
               </div>
               <button
                 onClick={() => deleteChat(s.id)}
@@ -289,11 +290,11 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             fontWeight: "500",
           }}
         >
-          NewVision Chatboard v1.1
+          NewVision Chatboard v1.2
         </div>
       </aside>
 
-      {/* Main Chat */}
+      {/* Main Chat Area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <header
           style={{
@@ -304,8 +305,8 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             fontSize: "1.1rem",
             fontWeight: 600,
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          }}
-        >
+            }}
+          >
           🧠 NewVision Chatboard
         </header>
 
@@ -316,149 +317,183 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             padding: "1rem",
             display: "flex",
             flexDirection: "column",
-            gap: "1rem",
+            alignItems: activeSession ? "stretch" : "center",
+            justifyContent: activeSession ? "flex-start" : "center",
           }}
         >
-          {activeSession?.messages.map((msg, i) => (
-            <div
-              key={i}
-              style={{
-                position: "relative",
-                alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                background: msg.role === "user" ? "#202123" : "white",
-                color: msg.role === "user" ? "white" : "#222",
-                padding: "12px 16px",
-                borderRadius:
-                  msg.role === "user"
-                    ? "18px 18px 4px 18px"
-                    : "18px 18px 18px 4px",
-                maxWidth: "80%",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-                lineHeight: "1.5",
-              }}
-            >
-              {msg.role === "assistant" ? (
-                <ReactMarkdown
-                  children={msg.content}
-                  components={{
-                    code({ inline, className, children, ...props }) {
-                      const match = /language-(\w+)/.exec(className || "");
-                      return !inline && match ? (
-                        <div style={{ position: "relative" }}>
-                          <button
-                            onClick={() =>
-                              handleCopy(String(children).trim(), i)
-                            }
-                            style={{
-                              position: "absolute",
-                              top: "4px",
-                              right: "6px",
-                              border: "none",
-                              background: "#333",
-                              color: "white",
-                              fontSize: "0.8rem",
-                              padding: "2px 6px",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            {copiedIndex === i ? "Copied!" : "Copy"}
-                          </button>
-                          <SyntaxHighlighter
-                            style={atomOneDark}
-                            language={match[1]}
-                            PreTag="div"
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, "")}
-                          </SyntaxHighlighter>
-                        </div>
-                      ) : (
-                        <code
-                          style={{
-                            background: "#eee",
-                            padding: "2px 5px",
-                            borderRadius: "4px",
-                            fontFamily: "monospace",
-                            fontSize: "0.95em",
-                          }}
-                          {...props}
-                        >
-                          {children}
-                        </code>
-                      );
-                    },
+          {!activeSession ? (
+            <div className="empty-chat">
+        <div className="empty-chat-content">
+          <h2>Hi there 👋</h2>
+          <p>What should we dive into today?</p>
+
+          <div className="chat-placeholder">
+            <div style={{ textAlign: "center", fontSize: "1.2rem"}}>
+               <strong>Select a new chat to start the conversation.</strong>
+            </div>
+            <div className="suggestion-buttons">
+              <button>Create an image</button>
+              <button>Simplify a topic</button>
+              <button>Write a first draft</button>
+              <button>Improve writing</button>
+              <button>Draft an email</button>
+              <button>Predict the future</button>
+              <button>Get advice</button>
+              <button>Improve communication</button>
+            </div>
+          </div>
+        </div>
+      </div>
+          ) : (
+            <>
+              {activeSession.messages.map((msg, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: "relative",
+                    alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                    background: msg.role === "user" ? "#202123" : "white",
+                    color: msg.role === "user" ? "white" : "#222",
+                    padding: "12px 16px",
+                    borderRadius:
+                      msg.role === "user"
+                        ? "18px 18px 4px 18px"
+                        : "18px 18px 18px 4px",
+                    maxWidth: "80%",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                    lineHeight: "1.5",
+                    wordBreak: "break-word",
+                    fontSize: "0.95rem",
                   }}
-                />
-              ) : (
-                msg.content
+                >
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown
+                      children={msg.content}
+                      components={{
+                        code({ inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || "");
+                          return !inline && match ? (
+                            <div style={{ position: "relative" }}>
+                              <button
+                                onClick={() =>
+                                  handleCopy(String(children).trim(), i)
+                                }
+                                style={{
+                                  position: "absolute",
+                                  top: "4px",
+                                  right: "6px",
+                                  border: "none",
+                                  background: "#333",
+                                  color: "white",
+                                  fontSize: "0.8rem",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {copiedIndex === i ? "Copied!" : "Copy"}
+                              </button>
+                              <SyntaxHighlighter
+                                style={atomOneDark}
+                                language={match[1]}
+                                PreTag="div"
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, "")}
+                              </SyntaxHighlighter>
+                            </div>
+                          ) : (
+                            <code
+                              style={{
+                                background: "#eee",
+                                padding: "2px 5px",
+                                borderRadius: "4px",
+                                fontFamily: "monospace",
+                                fontSize: "0.95em",
+                              }}
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    />
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+              ))}
+
+              {loading && (
+                <div
+                  style={{
+                    alignSelf: "flex-start",
+                    fontStyle: "italic",
+                    color: "#666",
+                    background: "white",
+                    padding: "10px 14px",
+                    borderRadius: "12px",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                    maxWidth: "75%",
+                  }}
+                >
+                  Typing...
+                </div>
               )}
-            </div>
-          ))}
-
-          {loading && (
-            <div
-              style={{
-                alignSelf: "flex-start",
-                fontStyle: "italic",
-                color: "#666",
-                background: "white",
-                padding: "10px 14px",
-                borderRadius: "12px",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-                maxWidth: "75%",
-              }}
-            >
-           Typing...
-            </div>
+              <div ref={chatEndRef} />
+            </>
           )}
-
-          <div ref={chatEndRef} />
         </div>
 
-        {/* Input */}
-        <footer
-          style={{
-            display: "flex",
-            padding: "1rem",
-            borderTop: "1px solid #ddd",
-            background: "#fff",
-          }}
-        >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Ask anything..."
-            rows={1}
+        {/* Input area only if chat selected */}
+        {activeSession && (
+          <footer
             style={{
-              flex: 1,
-              resize: "none",
-              borderRadius: "10px",
-              padding: "10px",
-              fontSize: "1rem",
-              border: "1px solid #ccc",
-              outline: "none",
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={loading || !activeSession}
-            style={{
-              marginLeft: "10px",
-              padding: "0 20px",
-              backgroundColor: loading ? "#6c757d" : "#202123",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "1rem",
-              fontWeight: 500,
+              display: "flex",
+              padding: "1rem",
+              borderTop: "1px solid #ddd",
+              background: "#fff",
+              flexWrap: "wrap",
             }}
           >
-            {loading ? "..." : "Send"}
-          </button>
-        </footer>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Ask anything..."
+              rows={1}
+              style={{
+                flex: 1,
+                resize: "none",
+                borderRadius: "10px",
+                padding: "10px",
+                fontSize: "1rem",
+                border: "1px solid #ccc",
+                outline: "none",
+                minWidth: "200px",
+              }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={loading}
+              style={{
+                marginLeft: "10px",
+                padding: "0 20px",
+                backgroundColor: loading ? "#6c757d" : "#202123",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: "1rem",
+                fontWeight: 500,
+                marginTop: "8px",
+              }}
+            >
+              {loading ? "..." : "Send"}
+            </button>
+          </footer>
+        )}
       </div>
     </div>
   );

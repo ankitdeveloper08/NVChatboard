@@ -1,0 +1,90 @@
+.empty-chat {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  background-color: #faf8f6;
+  color: #222;
+  flex-direction: column;
+  text-align: center;
+  animation: fadeIn 0.6s ease;
+}
+
+.empty-chat-content {
+  text-align: center;
+}
+
+.empty-chat-content h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #2c2c2c;
+  margin-bottom: 0.5rem;
+}
+
+.empty-chat-content p {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 2rem;
+}
+
+.chat-placeholder {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+  width: 60%;
+  margin: 0 auto;
+}
+
+.suggestion-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 1.5rem;
+  gap: 0.8rem;
+}
+
+.suggestion-buttons button {
+  background: #f3f2f1;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.suggestion-buttons button:hover {
+  background: #eaeaea;
+  transform: translateY(-2px);
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .chat-placeholder {
+    width: 90%;
+    padding: 1.5rem;
+  }
+
+  .empty-chat-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .suggestion-buttons button {
+    font-size: 0.85rem;
+    padding: 0.5rem 1rem;
+  }
+}
