@@ -15,7 +15,11 @@ function App() {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editingValue, setEditingValue] = useState("");
   const chatEndRef = useRef(null);
 
   // Load stored chats
@@ -23,8 +27,15 @@ function App() {
     const stored = localStorage.getItem("chatSessions");
     if (stored) {
       const parsed = JSON.parse(stored);
-      setSessions(parsed);
-      if (parsed.length > 0) setActiveSessionId(parsed[0].id);
+      // Ensure each message has a stable id so copy buttons can target a specific block
+      const withIds = parsed.map((sess) => ({
+        ...sess,
+        messages: (sess.messages || []).map((m) =>
+          m.id ? m : { ...m, id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
+        ),
+      }));
+      setSessions(withIds);
+      if (withIds.length > 0) setActiveSessionId(withIds[0].id);
     }
   }, []);
 
@@ -58,6 +69,12 @@ function App() {
     else if (filtered.length === 0) setActiveSessionId(null);
   };
 
+  const handleConfirmDelete = (id) => {
+    // perform the delete and close the confirmation modal
+    deleteChat(id);
+    setDeleteTargetId(null);
+  };
+
   const renameChat = (id, title) => {
     setSessions((prev) =>
       prev.map((s) => (s.id === id ? { ...s, title } : s))
@@ -67,7 +84,11 @@ function App() {
   const handleSend = async () => {
     if (!input.trim() || !activeSession) return;
 
-    const userMessage = { role: "user", content: input };
+    const userMessage = {
+      role: "user",
+      content: input,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    };
     const updatedSessions = sessions.map((s) =>
       s.id === activeSessionId
         ? { ...s, messages: [...s.messages, userMessage] }
@@ -106,11 +127,21 @@ If the user asks about them, answer using this info. Otherwise, respond normally
       let fullMessage = "";
       let done = false;
 
-      // Add empty assistant message while streaming
+      // Add empty assistant message while streaming (include id)
       setSessions((prev) =>
         prev.map((s) =>
           s.id === activeSessionId
-            ? { ...s, messages: [...s.messages, { role: "assistant", content: "" }] }
+            ? {
+                ...s,
+                messages: [
+                  ...s.messages,
+                  {
+                    role: "assistant",
+                    content: "",
+                    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  },
+                ],
+              }
             : s
         )
       );
@@ -172,6 +203,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                   {
                     role: "assistant",
                     content: "❌ Error: Could not reach LM Studio API.",
+                    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                   },
                 ],
               }
@@ -183,11 +215,11 @@ If the user asks about them, answer using this info. Otherwise, respond normally
     }
   };
 
-  const handleCopy = async (text, index) => {
+  const handleCopy = async (text, id) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 1500);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
     } catch (err) {
       console.error("Copy failed:", err);
     }
@@ -202,28 +234,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
 
   // --- JSX ---
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        fontFamily: "Inter, sans-serif",
-        background: "#f4f6f9",
-      }}
-    >
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: "260px",
-          background: "#202123",
-          color: "white",
-          display: "flex",
-          flexDirection: "column",
-          transition: "width 0.3s ease",
-          overflow: "hidden",
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
+  <div className="app-container" onClick={() => setOpenMenuId(null)} style={{ fontFamily: "Inter, sans-serif", background: "#f4f6f9" }}>
+  {/* Sidebar */}
+  <aside className="sidebar" style={{ transition: "width 0.3s ease", overflow: "hidden", position: "relative", zIndex: 2 }}>
         <button
           onClick={createNewChat}
           style={{
@@ -254,28 +267,107 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 margin: "4px 8px",
                 borderRadius: "6px",
                 cursor: "pointer",
+                position: "relative",
               }}
             >
-              <div
-                style={{ flex: 1 }}
-                onClick={() => setActiveSessionId(s.id)}
-                title={s.title}
-              >
-                {s.title.length > 25 ? s.title.slice(0, 25) + "..." : s.title}
+              <div style={{ flex: 1 }} title={s.title}>
+                {editingId === s.id ? (
+                  <input
+                    autoFocus
+                    className="session-title-input"
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onBlur={() => {
+                      const v = editingValue.trim() || "Untitled";
+                      renameChat(s.id, v);
+                      setEditingId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const v = editingValue.trim() || "Untitled";
+                        renameChat(s.id, v);
+                        setEditingId(null);
+                      } else if (e.key === "Escape") {
+                        setEditingId(null);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div
+                    onClick={() => setActiveSessionId(s.id)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {s.title.length > 25 ? s.title.slice(0, 25) + "..." : s.title}
+                  </div>
+                )}
               </div>
+              {/* More options menu button */}
               <button
-                onClick={() => deleteChat(s.id)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#bbb",
-                  cursor: "pointer",
-                  fontSize: "16px",
-                  marginLeft: "8px",
+                className="session-menu-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuId(openMenuId === s.id ? null : s.id);
                 }}
+                aria-haspopup="true"
+                aria-expanded={openMenuId === s.id}
+                title="More options"
+                style={{ marginLeft: "6px" }}
               >
-                🗑️
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="5" cy="12" r="1.5" fill="currentColor" />
+                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                  <circle cx="19" cy="12" r="1.5" fill="currentColor" />
+                </svg>
               </button>
+              {/* delete button removed — deletion is available from More Options menu */}
+
+              {/* Session menu dropdown */}
+              {openMenuId === s.id && (
+                <div
+                  className="session-menu"
+                  onClick={(e) => e.stopPropagation()}
+                  role="menu"
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <button
+                      className="session-menu-item"
+                      onClick={() => {
+                        setEditingId(s.id);
+                        setEditingValue(s.title || "");
+                        setOpenMenuId(null);
+                      }}
+                    >
+                      Rename
+                    </button>
+                    {/* model-based rename removed - keep simple Rename action */}
+                  </div>
+                  <button
+                    className="session-menu-item"
+                    onClick={() => {
+                      // Duplicate session
+                      const copy = {
+                        ...s,
+                        id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        title: `${s.title} (copy)`,
+                        messages: (s.messages || []).map((m) => ({ ...m, id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })),
+                      };
+                      setSessions((prev) => [copy, ...prev]);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    className="session-menu-item session-menu-delete"
+                    onClick={() => {
+                      setDeleteTargetId(s.id);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -295,22 +387,13 @@ If the user asks about them, answer using this info. Otherwise, respond normally
       </aside>
 
       {/* Main Chat Area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <header
-          style={{
-            background: "#202123",
-            color: "white",
-            padding: "1rem",
-            textAlign: "center",
-            fontSize: "1.1rem",
-            fontWeight: 600,
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-            }}
-          >
+      <div className="chat-area" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <header className="header" style={{ textAlign: "center", padding: "1rem" }}>
           🧠 NewVision Chatboard
         </header>
 
         <div
+          className="chat-messages"
           style={{
             flex: 1,
             overflowY: "auto",
@@ -346,63 +429,43 @@ If the user asks about them, answer using this info. Otherwise, respond normally
       </div>
           ) : (
             <>
-              {activeSession.messages.map((msg, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: "relative",
-                    alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                    background: msg.role === "user" ? "#202123" : "white",
-                    color: msg.role === "user" ? "white" : "#222",
-                    padding: "12px 16px",
-                    borderRadius:
-                      msg.role === "user"
-                        ? "18px 18px 4px 18px"
-                        : "18px 18px 18px 4px",
-                    maxWidth: "80%",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-                    lineHeight: "1.5",
-                    wordBreak: "break-word",
-                    fontSize: "0.95rem",
-                  }}
-                >
+              {activeSession.messages.map((msg, i) => {
+                let codeBlockCounter = 0;
+                return (
+                    <div
+                      key={msg.id || i}
+                      className={`message ${msg.role}`}
+                      style={{ position: "relative", maxWidth: "80%" }}
+                    >
                   {msg.role === "assistant" ? (
                     <ReactMarkdown
                       children={msg.content}
                       components={{
                         code({ inline, className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || "");
-                          return !inline && match ? (
-                            <div style={{ position: "relative" }}>
-                              <button
-                                onClick={() =>
-                                  handleCopy(String(children).trim(), i)
-                                }
-                                style={{
-                                  position: "absolute",
-                                  top: "4px",
-                                  right: "6px",
-                                  border: "none",
-                                  background: "#333",
-                                  color: "white",
-                                  fontSize: "0.8rem",
-                                  padding: "2px 6px",
-                                  borderRadius: "4px",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                {copiedIndex === i ? "Copied!" : "Copy"}
-                              </button>
-                              <SyntaxHighlighter
-                                style={atomOneDark}
-                                language={match[1]}
-                                PreTag="div"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, "")}
-                              </SyntaxHighlighter>
-                            </div>
-                          ) : (
+                          if (!inline && match) {
+                            const copyId = `${msg.id || i}-${codeBlockCounter}`;
+                            codeBlockCounter += 1;
+                            return (
+                              <div style={{ position: "relative" }}>
+                                <button
+                                  className="copy-btn"
+                                  onClick={() => handleCopy(String(children).trim(), copyId)}
+                                >
+                                  {copiedId === copyId ? "Copied!" : "Copy"}
+                                </button>
+                                <SyntaxHighlighter
+                                  style={atomOneDark}
+                                  language={match[1]}
+                                  PreTag="div"
+                                  {...props}
+                                >
+                                  {String(children).replace(/\n$/, "")}
+                                </SyntaxHighlighter>
+                              </div>
+                            );
+                          }
+                          return (
                             <code
                               style={{
                                 background: "#eee",
@@ -423,7 +486,8 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                     msg.content
                   )}
                 </div>
-              ))}
+              );
+              })}
 
               {loading && (
                 <div
@@ -495,6 +559,68 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           </footer>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTargetId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={() => setDeleteTargetId(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "360px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h3 style={{ margin: 0, marginBottom: 8 }}>Delete chat</h3>
+            <p style={{ marginTop: 0, marginBottom: 16 }}>
+              Are you sure you want to delete this chat? This action cannot be
+              undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  background: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleConfirmDelete(deleteTargetId)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: "#d9534f",
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
