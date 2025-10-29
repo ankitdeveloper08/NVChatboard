@@ -20,6 +20,7 @@ function App() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const chatEndRef = useRef(null);
 
   // Load stored chats
@@ -54,7 +55,7 @@ function App() {
   const createNewChat = () => {
     const newChat = {
       id: `chat-${Date.now()}`,
-      title: "New Chat",
+      title: "New Conversation",
       messages: [],
     };
     setSessions((prev) => [newChat, ...prev]);
@@ -252,41 +253,37 @@ If the user asks about them, answer using this info. Otherwise, respond normally
 
   // --- JSX ---
   return (
-  <div className="app-container" onClick={() => setOpenMenuId(null)} style={{ fontFamily: "Inter, sans-serif", background: "#f4f6f9" }}>
+  <div className="app-container" onClick={() => setOpenMenuId(null)}>
   {/* Sidebar */}
-  <aside className="sidebar" style={{ transition: "width 0.3s ease", overflow: "hidden", position: "relative", zIndex: 2 }}>
-        <button
-          onClick={createNewChat}
-          style={{
-            background: "#343541",
-            color: "white",
-            border: "none",
-            padding: "12px",
-            margin: "12px",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontWeight: "500",
-            whiteSpace: "nowrap",
-          }}
-        >
-          + New Chat
-        </button>
+  <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        {/* (toggle will appear inside header on the right when expanded) */}
+        
+        <div className="sidebar-content">
+          <div className="sidebar-header">
+            <span className="sidebar-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              NewVision
+            </span>
 
-        <div style={{ flex: 1, overflowY: "auto" }}>
+            {/* Right-top toggle button shown when sidebar is expanded (in the red square) */}
+            {!isSidebarCollapsed && (
+              <button className="sidebar-toggle" onClick={() => setIsSidebarCollapsed(true)} title="Hide sidebar" aria-label="Hide sidebar">
+               ☰
+              </button>
+            )}
+          </div>
+
+          <button className="new-chat-btn" onClick={createNewChat} title="New chat"> 
+            + Add New conversation
+          </button>
+
+  <div className="session-list">
           {sessions.map((s) => (
             <div
               key={s.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                background: s.id === activeSessionId ? "#343541" : "transparent",
-                padding: "10px 14px",
-                margin: "4px 8px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                position: "relative",
-              }}
+              className={`session-item ${s.id === activeSessionId ? 'active' : ''}`}
             >
               <div style={{ flex: 1 }} title={s.title}>
                 {editingId === s.id ? (
@@ -329,7 +326,6 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 aria-haspopup="true"
                 aria-expanded={openMenuId === s.id}
                 title="More options"
-                style={{ marginLeft: "6px" }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <circle cx="5" cy="12" r="1.5" fill="currentColor" />
@@ -389,23 +385,78 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             </div>
           ))}
         </div>
-        <div
-          style={{
-            background: "#343541",
-            color: "white",
-            border: "none",
-            padding: "12px",
-            margin: "12px",
-            borderRadius: "6px",
-            fontWeight: "500",
-          }}
-        >
-          NewVision Chatboard v1.2
+        {/* Bottom version text */}
+        {!isSidebarCollapsed && (
+          <div
+            style={{
+              background: "#343541",
+              color: "white",
+              border: "none",
+              padding: "12px",
+              margin: "12px",
+              borderRadius: "6px",
+              fontWeight: "500",
+            }}
+          >
+            NewVision Chatboard v1.2
+          </div>
+        )}
         </div>
       </aside>
 
+      {/* Collapsed sidebar area */}
+      {isSidebarCollapsed && (
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: "48px",
+          background: "#202123",
+          borderRight: "1px solid rgba(255,255,255,0.1)",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
+          paddingTop: "12px",
+          zIndex: 2
+        }}>
+          <button
+            onClick={() => setIsSidebarCollapsed(false)}
+            style={{
+              width: "32px",
+              height: "32px",
+              marginLeft: "8px",
+              background: "#343541",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "4px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              padding: 0,
+              fontSize: "14px",
+              transition: "background-color 0.2s, transform 0.2s"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#444654"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#343541"}
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            ☰
+          </button>
+        </div>
+      )}
+
       {/* Main Chat Area */}
-      <div className="chat-area" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div className="chat-area" style={{ 
+        flex: 1, 
+        display: "flex", 
+        flexDirection: "column",
+        marginLeft: isSidebarCollapsed ? "48px" : "0", // Space for collapsed toggle button
+        transition: "margin-left 0.3s ease",
+        background: "#f4f6f9" // Light background for chat area only
+      }}>
         <header className="header" style={{ textAlign: "center", padding: "1rem" }}>
           🧠 NewVision Chatboard
         </header>
@@ -604,10 +655,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
             }}
           >
-            <h3 style={{ margin: 0, marginBottom: 8 }}>Delete chat</h3>
+            <h3 style={{ margin: 0, marginBottom: 8 }}>Delete conversation?</h3>
             <p style={{ marginTop: 0, marginBottom: 16 }}>
-              Are you sure you want to delete this chat? This action cannot be
-              undone.
+             Once you delete a conversation, the messages are gone forever on every device.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
