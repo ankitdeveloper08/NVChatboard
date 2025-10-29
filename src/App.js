@@ -61,6 +61,24 @@ function App() {
     setActiveSessionId(newChat.id);
   };
 
+  // Create a new chat from a suggestion and optionally send immediately
+  const handleSuggestion = (text, sendImmediately = true) => {
+    const newChat = {
+      id: `chat-${Date.now()}`,
+      title: text.length > 30 ? text.slice(0, 30) : text,
+      messages: [],
+    };
+    setSessions((prev) => [newChat, ...prev]);
+    setActiveSessionId(newChat.id);
+    setInput(text);
+    if (sendImmediately) {
+      // allow state to settle so activeSession is available in handleSend
+      setTimeout(() => {
+        handleSend();
+      }, 50);
+    }
+  };
+
   const deleteChat = (id) => {
     const filtered = sessions.filter((s) => s.id !== id);
     setSessions(filtered);
@@ -410,19 +428,19 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           <h2>Hi there 👋</h2>
           <p>What should we dive into today?</p>
 
-          <div className="chat-placeholder">
+            <div className="chat-placeholder">
             <div style={{ textAlign: "center", fontSize: "1.2rem"}}>
                <strong>Select a new chat to start the conversation.</strong>
             </div>
             <div className="suggestion-buttons">
-              <button>Create an image</button>
-              <button>Simplify a topic</button>
-              <button>Write a first draft</button>
-              <button>Improve writing</button>
-              <button>Draft an email</button>
-              <button>Predict the future</button>
-              <button>Get advice</button>
-              <button>Improve communication</button>
+              <button onClick={() => handleSuggestion("Create an image")}>Create an image</button>
+              <button onClick={() => handleSuggestion("Simplify a topic")}>Simplify a topic</button>
+              <button onClick={() => handleSuggestion("Write a first draft")}>Write a first draft</button>
+              <button onClick={() => handleSuggestion("Improve writing")}>Improve writing</button>
+              <button onClick={() => handleSuggestion("Draft an email")}>Draft an email</button>
+              <button onClick={() => handleSuggestion("Predict the future")}>Predict the future</button>
+              <button onClick={() => handleSuggestion("Get advice")}>Get advice</button>
+              <button onClick={() => handleSuggestion("Improve communication")}>Improve communication</button>
             </div>
           </div>
         </div>
