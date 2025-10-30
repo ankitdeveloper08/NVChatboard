@@ -24,6 +24,10 @@ function App() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const chatEndRef = useRef(null);
 
+    // === VOICE: new state + ref (added, doesn't remove any existing code) ===
+    const [listening, setListening] = useState(false);
+    const recognitionRef = useRef(null);
+
     // --- auto-resize textarea refs / constants ---
     const inputRef = useRef(null);
     const TEXTAREA_MAX_HEIGHT = 300; // px, adjust to taste
@@ -37,6 +41,91 @@ function App() {
         ta.style.height = newHeight + "px";
         // show scrollbar if content exceeds max height
         ta.style.overflowY = ta.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
+    };
+
+    // === VOICE: initialize recognition once (safe, added without removing code) ===
+    useEffect(() => {
+        // only run in browsers with the Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            recognitionRef.current = null;
+            return;
+        }
+
+        try {
+            const rec = new SpeechRecognition();
+            rec.continuous = false;
+            rec.interimResults = false;
+            rec.lang = "en-US";
+
+            rec.onstart = () => {
+                setListening(true);
+            };
+
+            rec.onresult = (event) => {
+                try {
+                    const transcript = event.results[0][0].transcript;
+                    // Put recognized text into the input (user can edit before sending)
+                    setInput(transcript);
+                } catch (err) {
+                    console.error("Speech result parsing error:", err);
+                }
+            };
+
+            rec.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                // ensure UI resets
+                setListening(false);
+            };
+
+            rec.onend = () => {
+                // stop indicator
+                setListening(false);
+            };
+
+            recognitionRef.current = rec;
+        } catch (err) {
+            console.error("SpeechRecognition init failed:", err);
+            recognitionRef.current = null;
+        }
+
+        // cleanup on unmount
+        return () => {
+            try {
+                if (recognitionRef.current) {
+                    recognitionRef.current.onresult = null;
+                    recognitionRef.current.onend = null;
+                    recognitionRef.current.onerror = null;
+                    recognitionRef.current.onstart = null;
+                    // don't call stop here — component unmount will kill it
+                }
+            } catch (e) { /* ignore */ }
+        };
+    }, []); // run once
+
+    // === VOICE: start/stop handler (added) ===
+    const handleVoiceStart = () => {
+        const rec = recognitionRef.current;
+        if (!rec) {
+            // Browser doesn't support it
+            alert("Speech recognition is not supported in this browser.");
+            return;
+        }
+
+        try {
+            // If already listening, stop (toggle)
+            if (listening) {
+                rec.stop();
+                setListening(false);
+                return;
+            }
+            // start fresh
+            rec.start();
+            // onstart will set listening true
+        } catch (err) {
+            console.error("Voice start error:", err);
+            setListening(false);
+        }
     };
 
     // Load stored chats
@@ -716,6 +805,27 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                                 alignItems: "center",
                             }}
                         >
+                            {/* Voice button (ADDED) - kept style consistent with existing buttons */}
+                            <button
+                                onClick={handleVoiceStart}
+                                style={{
+                                    height: 40,
+                                    minWidth: 40,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderRadius: 8,
+                                    border: "1px solid rgba(0,0,0,0.08)",
+                                    background: listening ? "#ff4d4d" : "#fff",
+                                    cursor: "pointer",
+                                    boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                                    fontSize: 18,
+                                }}
+                                title={listening ? "Listening..." : "Start voice input"}
+                            >
+                                🎤
+                            </button>
+
                             {/* Clear button (now outside the textarea) */}
                             <button
                                 type="button"
