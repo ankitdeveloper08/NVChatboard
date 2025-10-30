@@ -404,49 +404,95 @@ If the user asks about them, answer using this info. Otherwise, respond normally
         </div>
       </aside>
 
-      {/* Collapsed sidebar area */}
-      {isSidebarCollapsed && (
-        <div style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: "48px",
-          background: "#202123",
-          borderRight: "1px solid rgba(255,255,255,0.1)",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "flex-start",
-          paddingTop: "12px",
-          zIndex: 2
-        }}>
-          <button
-            onClick={() => setIsSidebarCollapsed(false)}
-            style={{
-              width: "32px",
-              height: "32px",
-              marginLeft: "8px",
-              background: "#343541",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "4px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              padding: 0,
-              fontSize: "14px",
-              transition: "background-color 0.2s, transform 0.2s"
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#444654"}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#343541"}
-            title="Expand sidebar"
-            aria-label="Expand sidebar"
-          >
-            ☰
-          </button>
-        </div>
-      )}
+ {isSidebarCollapsed && (
+  <div
+    style={{
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: "48px",
+      background: "#202123",
+      borderRight: "1px solid rgba(255,255,255,0.1)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      paddingTop: "12px",
+      zIndex: 2,
+      gap: "10px",
+    }}
+  >
+    <button
+      onClick={() => setIsSidebarCollapsed(false)}
+      style={{
+        width: "32px",
+        height: "32px",
+        background: "#343541",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: "4px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontSize: "16px",
+        transition: "background-color 0.2s, transform 0.2s",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#444654")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#343541")}
+      title="Expand sidebar"
+      aria-label="Expand sidebar"
+    >
+      ☰
+    </button>
+     <button
+      onClick={(e) => {
+        e.stopPropagation();
+        createNewChat();
+      }}
+      style={{
+        width: "32px",
+        height: "32px",
+        background: "#343541",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: "4px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontSize: "20px",
+        transition: "background-color 0.2s, transform 0.2s",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#444654")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#343541")}
+      title="New chat"
+      aria-label="New chat"
+    >
+      +
+    </button>
+      <button
+      style={{
+        width: "32px",
+        height: "32px",
+        background: "#343541",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: "4px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontSize: "20px",
+        transition: "background-color 0.2s, transform 0.2s",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#444654")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#343541")}
+    >
+      ?
+    </button>
+  </div>
+)}
 
       {/* Main Chat Area */}
       <div className="chat-area" style={{ 
