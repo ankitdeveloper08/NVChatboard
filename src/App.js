@@ -389,7 +389,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+     if (!loading) {
       handleSend();
+    }
     }
   };
 
