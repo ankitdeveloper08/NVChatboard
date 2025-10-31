@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
 import { MdViewSidebar } from "react-icons/md";
-import { FaMicrophone, FaPlus,  FaSearch } from "react-icons/fa";
+import { FaMicrophone, FaPlus, FaSearch, FaStop } from "react-icons/fa";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
@@ -25,6 +25,7 @@ function App() {
   const [editingValue, setEditingValue] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const chatEndRef = useRef(null);
+  const controllerRef = useRef(null);
 
   // === VOICE: new state + ref (added, doesn't remove any existing code) ===
   const [listening, setListening] = useState(false);
@@ -227,6 +228,14 @@ function App() {
     setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
   };
 
+  const handleStop = () => {
+    if (controllerRef.current) {
+      controllerRef.current.abort(); // cancel the current stream
+      controllerRef.current = null;
+      setLoading(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !activeSession) return;
 
@@ -249,6 +258,7 @@ function App() {
     setTimeout(() => adjustTextareaHeight(), 0);
 
     try {
+      controllerRef.current = new AbortController();
       const systemPrompt = {
         role: "system",
         content: `You are a helpful assistant who knows the following team members:
@@ -268,6 +278,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             stream: true,
             messages: [systemPrompt, ...activeSession.messages, userMessage],
           }),
+          signal: controllerRef.current.signal, // <-- attach abort signal here
         }
       );
 
@@ -351,26 +362,31 @@ If the user asks about them, answer using this info. Otherwise, respond normally
         renameChat(activeSessionId, userMessage.content.slice(0, 30));
       }
     } catch (err) {
-      console.error(err);
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSessionId
-            ? {
-                ...s,
-                messages: [
-                  ...s.messages,
-                  {
-                    role: "assistant",
-                    content: "❌ Error: Could not reach LM Studio API.",
-                    id: `msg-${Date.now()}-${Math.random()
-                      .toString(36)
-                      .slice(2, 8)}`,
-                  },
-                ],
-              }
-            : s
-        )
-      );
+      if (err.name === "AbortError") {
+        console.log("🛑 Generation stopped by user.");
+        // Don't show any error message in chat — just stop gracefully
+      } else {
+        console.error(err);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? {
+                  ...s,
+                  messages: [
+                    ...s.messages,
+                    {
+                      role: "assistant",
+                      content: "❌ Error: Could not reach LM Studio API.",
+                      id: `msg-${Date.now()}-${Math.random()
+                        .toString(36)
+                        .slice(2, 8)}`,
+                    },
+                  ],
+                }
+              : s
+          )
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -389,9 +405,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-     if (!loading) {
-      handleSend();
-    }
+      if (!loading) {
+        handleSend();
+      }
     }
   };
 
@@ -426,7 +442,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             onClick={createNewChat}
             title="New chat"
           >
-           <FaPlus />Add New conversation
+            <FaPlus /> <b>Add New conversation</b>
           </button>
 
           <div className="session-list">
@@ -595,7 +611,10 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             gap: "10px",
           }}
         >
-           < img src="/NVSide.png" alt="NV Logo"  style={{
+          <img
+            src="/NVSide.png"
+            alt="NV Logo"
+            style={{
               width: "32px",
               height: "32px",
               background: "gainsboro",
@@ -606,9 +625,10 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               alignItems: "center",
               justifyContent: "center",
               color: "black",
-              fontSize: "16px"
-            }} 
-              onClick={() => setIsSidebarCollapsed(false)}/>
+              fontSize: "16px",
+            }}
+            onClick={() => setIsSidebarCollapsed(false)}
+          />
           <button
             onClick={() => setIsSidebarCollapsed(false)}
             style={{
@@ -622,7 +642,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               alignItems: "center",
               justifyContent: "center",
               color: "black",
-              fontSize: "16px"
+              fontSize: "16px",
             }}
             onMouseEnter={(e) =>
               (e.currentTarget.style.backgroundColor = "#bbb")
@@ -633,7 +653,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             title="Expand sidebar"
             aria-label="Expand sidebar"
           >
-             <MdViewSidebar />
+            <MdViewSidebar />
           </button>
           <button
             onClick={(e) => {
@@ -646,7 +666,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               background: "gainsboro",
               borderRadius: "4px",
               cursor: "pointer",
-               border: "none",
+              border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -662,7 +682,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             title="New chat"
             aria-label="New chat"
           >
-           <FaPlus />
+            <FaPlus />
           </button>
           <button
             style={{
@@ -671,7 +691,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               background: "gainsboro",
               borderRadius: "4px",
               cursor: "pointer",
-               border: "none",
+              border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -685,7 +705,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               (e.currentTarget.style.backgroundColor = "#bbb")
             }
           >
-             <FaSearch />
+            <FaSearch />
           </button>
         </div>
       )}
@@ -708,7 +728,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           style={{ textAlign: "center", padding: "1rem" }}
         >
           <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
-           {/* NewVision Chatboard */}
+          {/* NewVision Chatboard */}
         </header>
 
         <div
@@ -874,7 +894,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               borderTop: "1px solid #ddd",
               background: "#fff",
               flexWrap: "wrap",
-              alignItems: "flex-end"
+              alignItems: "flex-end",
             }}
           >
             {/* textarea wrapper so textarea height can grow without moving the fixed buttons */}
@@ -964,23 +984,40 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 Clear
               </button>
 
-              <button
-                onClick={handleSend}
-                disabled={loading}
-                style={{
-                  padding: "0 20px",
-                  backgroundColor: loading ? "#6c757d" : "#202123",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  fontSize: "1rem",
-                  fontWeight: 500,
-                  height: "40px",
-                }}
-              >
-                {loading ? "..." : "Send"}
-              </button>
+              {loading ? (
+                <button
+                  onClick={handleStop}
+                  style={{
+                    padding: "0 20px",
+                    backgroundColor: "#d9534f",
+                    border: "red",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "1rem",
+                    fontWeight: 500,
+                    height: "40px",
+                  }}
+                >
+                 <FaStop  color="red"/>
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  style={{
+                    padding: "0 20px",
+                    backgroundColor: "#202123",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "1rem",
+                    fontWeight: 500,
+                    height: "40px",
+                  }}
+                >
+                  Send
+                </button>
+              )}
             </div>
           </footer>
         )}
