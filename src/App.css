@@ -42,8 +42,8 @@ html, body, #root {
 
 .sidebar .new-chat-btn,
 .new-chat-btn {
-  background: #343541;
-  color: #fff;
+  background: gainsboro;
+  color: black;
   border: 1px solid rgba(255,255,255,0.15);
   padding: 10px 12px;
   margin: 12px;
@@ -69,7 +69,7 @@ html, body, #root {
   padding: 10px 12px;
   margin: 6px 4px;
   border-radius: 6px;
-  color: #eee;
+  color: black;
   cursor: pointer;
 }
 
@@ -112,7 +112,7 @@ html, body, #root {
 .session-menu-btn {
   background: transparent;
   border: none;
-  color: #bbb;
+  color: black;
   padding: 6px;
   border-radius: 6px;
   cursor: pointer;
@@ -121,7 +121,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
 }
-.session-menu-btn:hover { background: rgba(255,255,255,0.04); color: #fff; transform: translateY(-1px); }
+.session-menu-btn:hover { background: rgba(255,255,255,0.04); color: black; transform: translateY(-1px); }
 .session-menu-btn svg { width: 16px; height: 16px; }
 
 /* Dropdown menu */
@@ -189,7 +189,7 @@ html, body, #root {
 /* Header */
 .header,
 .chat-header {
-  background: #202123;
+  background: #fff;
   color: #fff;
   padding: 12px 16px;
   font-weight: 600;
@@ -398,7 +398,7 @@ button[disabled] {
   transition: all 0.28s ease;
   overflow: hidden;
   position: relative;
-  background: #202123;
+  background: #fff;
   border-right: 1px solid rgba(255,255,255,0.06);
   min-width: 260px;
   width: 260px;
@@ -442,19 +442,19 @@ button[disabled] {
 .sidebar-toggle {
   width: 32px;
   height: 32px;
-  background: #343541;
-  border: 1px solid rgba(255,255,255,0.1);
+  background: gainsboro;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: black;
   padding: 0;
   font-size: 14px;
   transition: background-color 0.18s ease, transform 0.18s ease;
 }
-.sidebar-toggle:hover { background: #444654; }
+.sidebar-toggle:hover { background: #bbb; }
 .new-chat-btn {
   background: #343541;
   color: #fff;
@@ -473,7 +473,7 @@ button[disabled] {
 .new-chat-btn svg { width: 16px; height: 16px; }
 .session-list { flex: 1; overflow-y: auto; margin-top: 8px; padding: 8px; }
 .session-item { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; margin:4px 8px; border-radius:6px; cursor:pointer; position:relative; }
-.session-item.active { background: #343541; }
+.session-item.active { background: gainsboro; }
 
 /* collapsed column styles */
 .collapsed-column {
@@ -513,3 +513,23 @@ button[disabled] {
 /* shift the main chat area when collapsed */
 .chat-area.shifted { margin-left: 48px; transition: margin-left 0.3s ease; }
 
+/* --- Compact Markdown paragraph and list spacing for assistant messages --- */
+.message.assistant p {
+  margin: 2px 0 !important; /* was 4px, now even tighter */
+  line-height: 1.4; /* slightly more compact line spacing */
+}
+
+.message.assistant ul,
+.message.assistant ol {
+  margin: 2px 0 2px 16px !important; /* less left padding and vertical space */
+  padding: 0;
+}
+
+.message.assistant li {
+  margin: 1px 0; /* minimal gap between list items */
+}
+
+/* Prevent big gaps between paragraphs */
+.message.assistant p + p {
+  margin-top: 3px; /* was 6px, now half */
+}
