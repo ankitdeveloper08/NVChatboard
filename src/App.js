@@ -723,11 +723,8 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           position: "relative", // make this the anchor for the fixed button area
         }}
       >
-        <header
-          className="header"
-          style={{ textAlign: "center", padding: "1rem" }}
-        >
-          <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
+        <header className="header" style={{ textAlign: "center", padding: "1rem" }}>
+          <img src="/NVvalues.png" alt="NV Logo" height="50px" style={{height: "100%", width: "100%"}}></img>
           {/* NewVision Chatboard */}
         </header>
 
