@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
 import { MdViewSidebar } from "react-icons/md";
-import { FaMicrophone, FaPlus, FaSearch, FaStop } from "react-icons/fa";
+import { FaMicrophone, FaPlus, FaSearch, FaStop, FaPaperPlane } from "react-icons/fa";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
@@ -737,7 +737,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               backgroundColor: "#ccc",
               color: "black",
               border: "none",
-              padding: "1rem 1rem",
+              padding: "0.8rem",
               borderRadius: "4px",
               cursor: "pointer",
               fontSize: "1rem",
@@ -954,8 +954,6 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                 display: "flex",
                 gap: 10,
                 marginLeft: 12,
-                justifyContent: "flex-end",
-                alignItems: "center", // keep buttons at bottom of footer
               }}
             >
               {/* Voice button (ADDED) - kept style consistent with existing buttons */}
@@ -1011,7 +1009,8 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                   onClick={handleStop}
                   style={{
                     padding: "0 20px",
-                    backgroundColor: "#d9534f",
+                    backgroundColor: "black",
+                    color: "white",
                     border: "red",
                     borderRadius: "8px",
                     cursor: "pointer",
@@ -1020,7 +1019,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                     height: "40px",
                   }}
                 >
-                  <FaStop color="red" />
+                  <FaStop color="white" />
                 </button>
               ) : (
                 <button
@@ -1037,7 +1036,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                     height: "40px",
                   }}
                 >
-                  Send
+                 <FaPaperPlane size={15} />
                 </button>
               )}
             </div>
