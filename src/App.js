@@ -24,6 +24,7 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("meta-llama-3.1-8b-instruct");
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
 
@@ -274,7 +275,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             // model: "google/gemma-3-1b",          ---- change model name if we are changing model in LM Studio ----
-            model: "meta-llama-3.1-8b-instruct",
+            model: selectedModel,
             stream: true,
             messages: [systemPrompt, ...activeSession.messages, userMessage],
           }),
@@ -728,7 +729,26 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           style={{ textAlign: "center", padding: "1rem" }}
         >
           <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
-          {/* NewVision Chatboard */}
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            style={{
+              position: "absolute",
+              right: "2rem",
+              backgroundColor: "#ccc",
+              color: "black",
+              border: "none",
+              padding: "1rem 1rem",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "1rem",
+            }}
+          >
+            <option value="meta-llama-3.1-8b-instruct">
+              meta-llama-3.1-8b-instruct
+            </option>
+            <option value="google/gemma-3-1b">google/gemma-3-1b</option>
+          </select>
         </header>
 
         <div
@@ -998,7 +1018,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                     height: "40px",
                   }}
                 >
-                 <FaStop  color="red"/>
+                  <FaStop color="red"/>
                 </button>
               ) : (
                 <button
