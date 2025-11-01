@@ -148,11 +148,11 @@ function App() {
           m.id
             ? m
             : {
-                ...m,
-                id: `msg-${Date.now()}-${Math.random()
-                  .toString(36)
-                  .slice(2, 8)}`,
-              }
+              ...m,
+              id: `msg-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`,
+            }
         ),
       }));
       setSessions(withIds);
@@ -295,18 +295,18 @@ If the user asks about them, answer using this info. Otherwise, respond normally
         prev.map((s) =>
           s.id === activeSessionId
             ? {
-                ...s,
-                messages: [
-                  ...s.messages,
-                  {
-                    role: "assistant",
-                    content: "",
-                    id: `msg-${Date.now()}-${Math.random()
-                      .toString(36)
-                      .slice(2, 8)}`,
-                  },
-                ],
-              }
+              ...s,
+              messages: [
+                ...s.messages,
+                {
+                  role: "assistant",
+                  content: "",
+                  id: `msg-${Date.now()}-${Math.random()
+                    .toString(36)
+                    .slice(2, 8)}`,
+                },
+              ],
+            }
             : s
         )
       );
@@ -337,18 +337,18 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                   prev.map((s) =>
                     s.id === activeSessionId
                       ? {
-                          ...s,
-                          messages: s.messages.map((m, idx) =>
-                            idx === s.messages.length - 1
-                              ? { ...m, content: fullMessage }
-                              : m
-                          ),
-                        }
+                        ...s,
+                        messages: s.messages.map((m, idx) =>
+                          idx === s.messages.length - 1
+                            ? { ...m, content: fullMessage }
+                            : m
+                        ),
+                      }
                       : s
                   )
                 );
               }
-            } catch {}
+            } catch { }
           }
         }
       }
@@ -372,18 +372,18 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           prev.map((s) =>
             s.id === activeSessionId
               ? {
-                  ...s,
-                  messages: [
-                    ...s.messages,
-                    {
-                      role: "assistant",
-                      content: "❌ Error: Could not reach LM Studio API.",
-                      id: `msg-${Date.now()}-${Math.random()
-                        .toString(36)
-                        .slice(2, 8)}`,
-                    },
-                  ],
-                }
+                ...s,
+                messages: [
+                  ...s.messages,
+                  {
+                    role: "assistant",
+                    content: "❌ Error: Could not reach LM Studio API.",
+                    id: `msg-${Date.now()}-${Math.random()
+                      .toString(36)
+                      .slice(2, 8)}`,
+                  },
+                ],
+              }
               : s
           )
         );
@@ -450,9 +450,8 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             {sessions.map((s) => (
               <div
                 key={s.id}
-                className={`session-item ${
-                  s.id === activeSessionId ? "active" : ""
-                }`}
+                className={`session-item ${s.id === activeSessionId ? "active" : ""
+                  }`}
               >
                 <div style={{ flex: 1 }} title={s.title}>
                   {editingId === s.id ? (
@@ -749,6 +748,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             </option>
             <option value="google/gemma-3-1b">google/gemma-3-1b</option>
           </select>
+        {/* <header className="header">
+          <img src="/NVvalues.png" alt="NV Logo" height="50px" style={{ height: "100%", width: "100%" }}></img>
+          NewVision Chatboard */}
         </header>
 
         <div
@@ -832,9 +834,8 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                               className || ""
                             );
                             if (!inline && match) {
-                              const copyId = `${
-                                msg.id || i
-                              }-${codeBlockCounter}`;
+                              const copyId = `${msg.id || i
+                                }-${codeBlockCounter}`;
                               codeBlockCounter += 1;
                               return (
                                 <div style={{ position: "relative" }}>
@@ -915,6 +916,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               background: "#fff",
               flexWrap: "wrap",
               alignItems: "flex-end",
+              lineHeight: "0",
             }}
           >
             {/* textarea wrapper so textarea height can grow without moving the fixed buttons */}
@@ -1018,7 +1020,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                     height: "40px",
                   }}
                 >
-                  <FaStop color="red"/>
+                  <FaStop color="red" />
                 </button>
               ) : (
                 <button
