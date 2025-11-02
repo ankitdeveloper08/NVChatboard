@@ -3,12 +3,19 @@ import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
 import { MdViewSidebar } from "react-icons/md";
-import { FaMicrophone, FaPlus, FaSearch, FaStop, FaPaperPlane } from "react-icons/fa";
+import {
+  FaMicrophone,
+  FaPlus,
+  FaSearch,
+  FaStop,
+  FaPaperPlane,
+} from "react-icons/fa";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import profiles from "./profile.json";
 import "./App.css";
+import SearchModal from "./SearchModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -24,7 +31,10 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("meta-llama-3.1-8b-instruct");
+  const [selectedModel, setSelectedModel] = useState(
+    "meta-llama-3.1-8b-instruct"
+  );
+  const [showSearch, setShowSearch] = useState(false);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
 
@@ -148,11 +158,11 @@ function App() {
           m.id
             ? m
             : {
-              ...m,
-              id: `msg-${Date.now()}-${Math.random()
-                .toString(36)
-                .slice(2, 8)}`,
-            }
+                ...m,
+                id: `msg-${Date.now()}-${Math.random()
+                  .toString(36)
+                  .slice(2, 8)}`,
+              }
         ),
       }));
       setSessions(withIds);
@@ -295,18 +305,18 @@ If the user asks about them, answer using this info. Otherwise, respond normally
         prev.map((s) =>
           s.id === activeSessionId
             ? {
-              ...s,
-              messages: [
-                ...s.messages,
-                {
-                  role: "assistant",
-                  content: "",
-                  id: `msg-${Date.now()}-${Math.random()
-                    .toString(36)
-                    .slice(2, 8)}`,
-                },
-              ],
-            }
+                ...s,
+                messages: [
+                  ...s.messages,
+                  {
+                    role: "assistant",
+                    content: "",
+                    id: `msg-${Date.now()}-${Math.random()
+                      .toString(36)
+                      .slice(2, 8)}`,
+                  },
+                ],
+              }
             : s
         )
       );
@@ -337,18 +347,18 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                   prev.map((s) =>
                     s.id === activeSessionId
                       ? {
-                        ...s,
-                        messages: s.messages.map((m, idx) =>
-                          idx === s.messages.length - 1
-                            ? { ...m, content: fullMessage }
-                            : m
-                        ),
-                      }
+                          ...s,
+                          messages: s.messages.map((m, idx) =>
+                            idx === s.messages.length - 1
+                              ? { ...m, content: fullMessage }
+                              : m
+                          ),
+                        }
                       : s
                   )
                 );
               }
-            } catch { }
+            } catch {}
           }
         }
       }
@@ -372,18 +382,18 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           prev.map((s) =>
             s.id === activeSessionId
               ? {
-                ...s,
-                messages: [
-                  ...s.messages,
-                  {
-                    role: "assistant",
-                    content: "❌ Error: Could not reach LM Studio API.",
-                    id: `msg-${Date.now()}-${Math.random()
-                      .toString(36)
-                      .slice(2, 8)}`,
-                  },
-                ],
-              }
+                  ...s,
+                  messages: [
+                    ...s.messages,
+                    {
+                      role: "assistant",
+                      content: "❌ Error: Could not reach LM Studio API.",
+                      id: `msg-${Date.now()}-${Math.random()
+                        .toString(36)
+                        .slice(2, 8)}`,
+                    },
+                  ],
+                }
               : s
           )
         );
@@ -445,13 +455,31 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           >
             <FaPlus /> <b>Add New conversation</b>
           </button>
+          <button
+            className="new-chat-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSearch((prev) => !prev);
+            }}
+            title="New chat"
+          >
+            <FaSearch /> <b>Search Conversations</b>
+          </button>
+          {showSearch && (
+            <SearchModal
+              sessions={sessions}
+              onSelect={(id) => setActiveSessionId(id)}
+              onClose={() => setShowSearch(false)}
+            />
+          )}
 
           <div className="session-list">
             {sessions.map((s) => (
               <div
                 key={s.id}
-                className={`session-item ${s.id === activeSessionId ? "active" : ""
-                  }`}
+                className={`session-item ${
+                  s.id === activeSessionId ? "active" : ""
+                }`}
               >
                 <div style={{ flex: 1 }} title={s.title}>
                   {editingId === s.id ? (
@@ -612,7 +640,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           }}
         >
           <img
-            src="/NVSide.png"
+            src="/NVlg.ico"
             alt="NV Logo"
             style={{
               width: "32px",
@@ -685,6 +713,10 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             <FaPlus />
           </button>
           <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSearch((prev) => !prev);
+            }}
             style={{
               width: "32px",
               height: "32px",
@@ -707,6 +739,13 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           >
             <FaSearch />
           </button>
+          {showSearch && (
+            <SearchModal
+              sessions={sessions}
+              onSelect={(id) => setActiveSessionId(id)}
+              onClose={() => setShowSearch(false)}
+            />
+          )}
         </div>
       )}
 
@@ -747,8 +786,14 @@ If the user asks about them, answer using this info. Otherwise, respond normally
               meta-llama-3.1-8b-instruct
             </option>
             <option value="google/gemma-3-1b">google/gemma-3-1b</option>
+            <option value="deepseek/deepseek-r1-0528-qwen3-8b">
+              deepseek/deepseek-r1-0528-qwen3-8b
+            </option>
+            <option value="deepseek-coder-6.7b-instruct">
+              deepseek-coder-6.7b-instruct
+            </option>
           </select>
-        {/* <header className="header">
+          {/* <header className="header">
           <img src="/NVvalues.png" alt="NV Logo" height="50px" style={{ height: "100%", width: "100%" }}></img>
           NewVision Chatboard */}
         </header>
@@ -834,8 +879,9 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                               className || ""
                             );
                             if (!inline && match) {
-                              const copyId = `${msg.id || i
-                                }-${codeBlockCounter}`;
+                              const copyId = `${
+                                msg.id || i
+                              }-${codeBlockCounter}`;
                               codeBlockCounter += 1;
                               return (
                                 <div style={{ position: "relative" }}>
@@ -1036,7 +1082,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
                     height: "40px",
                   }}
                 >
-                 <FaPaperPlane size={15} />
+                  <FaPaperPlane size={15} />
                 </button>
               )}
             </div>
