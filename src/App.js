@@ -248,160 +248,136 @@ function App() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !activeSession) return;
+  if (!input.trim() || !activeSessionId) return;
 
-    // Capture the user's message content so we can use it later (e.g., for renaming)
-    const userMessage = {
-      role: "user",
-      content: input,
-      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    };
-    const updatedSessions = sessions.map((s) =>
+  const userMessage = { id: `msg-${Date.now()}`, role: "user", content: input };
+
+  // Add user message to active session
+    setSessions((prev) =>
+    prev.map((s) =>
       s.id === activeSessionId
-        ? { ...s, messages: [...s.messages, userMessage] }
+        ? {
+            ...s,
+            title:
+              s.title === "New Conversation"
+                ? input.slice(0, 30) // first few words of the user input
+                : s.title,
+            messages: [...(s.messages || []), userMessage],
+          }
         : s
-    );
-    setSessions(updatedSessions);
-    // clear the input for the UI, but we still have userMessage.content for later use
-    setInput("");
-    setLoading(true);
-    // adjust textarea after clearing so it shrinks back
-    setTimeout(() => adjustTextareaHeight(), 0);
+    )
+  );
+  setInput("");
+  setLoading(true);
 
-    try {
-      controllerRef.current = new AbortController();
-      const systemPrompt = {
-        role: "system",
-        content: `You are a helpful assistant who knows the following team members:
+  // Create placeholder assistant message
+  const assistantMessage = {
+    id: `msg-${Date.now()}-assistant`,
+    role: "assistant",
+    content: "",
+  };
+
+  setSessions((prev) =>
+    prev.map((s) =>
+      s.id === activeSessionId
+        ? { ...s, messages: [...(s.messages || []), assistantMessage] }
+        : s
+    )
+  );
+
+  try {
+    controllerRef.current = new AbortController();
+     const systemPrompt = {
+      role: "system",
+      content: `You are a helpful assistant who knows the following team members:
 ${JSON.stringify(profiles.users, null, 2)}
-
 If the user asks about them, answer using this info. Otherwise, respond normally.`,
-      };
+    };
+    // Get the current session’s messages
+    const activeMessages =
+      sessions.find((s) => s.id === activeSessionId)?.messages || [];
 
-      const res = await fetch(
-        "https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            // model: "google/gemma-3-1b",          ---- change model name if we are changing model in LM Studio ----
-            model: selectedModel,
-            stream: true,
-            messages: [systemPrompt, ...activeSession.messages, userMessage],
-          }),
-          signal: controllerRef.current.signal, // <-- attach abort signal here
-        }
-      );
+    // const res = await fetch("http://localhost:5000/v1/chat/completions", {
+       const res = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3-8b-instruct", // ✅ match backend
+        messages: [systemPrompt, ...activeMessages, userMessage],
+      }),
+      signal: controllerRef.current.signal,
+    });
 
-      if (!res.ok || !res.body) throw new Error("No stream received.");
+    if (!res.ok) throw new Error(`Backend error: ${res.statusText}`);
+    if (!res.body) throw new Error("No valid stream received from backend");
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let fullMessage = "";
-      let done = false;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let fullText = "";
+    let done = false;
 
-      // Add empty assistant message while streaming (include id)
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSessionId
-            ? {
-                ...s,
-                messages: [
-                  ...s.messages,
-                  {
-                    role: "assistant",
-                    content: "",
-                    id: `msg-${Date.now()}-${Math.random()
-                      .toString(36)
-                      .slice(2, 8)}`,
-                  },
-                ],
-              }
-            : s
-        )
-      );
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line);
 
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        done = streamDone;
-        const chunk = decoder.decode(value, { stream: true });
-
-        const lines = chunk
-          .split("\n")
-          .map((line) => line.trim())
-          .filter((line) => line !== "");
-
-        for (const line of lines) {
-          if (line.startsWith("data:")) {
-            const data = line.replace("data:", "").trim();
-            if (data === "[DONE]") {
-              done = true;
-              break;
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.replace("data: ", "").trim();
+          if (data === "[DONE]") {
+            done = true;
+            break;
+          }
+          try {
+            const json = JSON.parse(data);
+            const token = json.choices?.[0]?.delta?.content || "";
+            if (token) {
+              fullText += token;
+              setSessions((prev) =>
+                prev.map((s) =>
+                  s.id === activeSessionId
+                    ? {
+                        ...s,
+                        messages: s.messages.map((m) =>
+                          m.id === assistantMessage.id
+                            ? { ...m, content: fullText }
+                            : m
+                        ),
+                      }
+                    : s
+                )
+              );
             }
-            try {
-              const json = JSON.parse(data);
-              const token = json.choices?.[0]?.delta?.content || "";
-              if (token) {
-                fullMessage += token;
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === activeSessionId
-                      ? {
-                          ...s,
-                          messages: s.messages.map((m, idx) =>
-                            idx === s.messages.length - 1
-                              ? { ...m, content: fullMessage }
-                              : m
-                          ),
-                        }
-                      : s
-                  )
-                );
-              }
-            } catch {}
+          } catch (err) {
+            console.error("⚠️ Parse error:", err);
           }
         }
       }
-
-      // Rename the chat if it still has a default "New..." title using the captured userMessage content
-      if (
-        activeSession &&
-        typeof activeSession.title === "string" &&
-        activeSession.title.startsWith("New") &&
-        userMessage.content.trim()
-      ) {
-        renameChat(activeSessionId, userMessage.content.slice(0, 30));
-      }
-    } catch (err) {
-      if (err.name === "AbortError") {
-        console.log("🛑 Generation stopped by user.");
-        // Don't show any error message in chat — just stop gracefully
-      } else {
-        console.error(err);
-        setSessions((prev) =>
-          prev.map((s) =>
-            s.id === activeSessionId
-              ? {
-                  ...s,
-                  messages: [
-                    ...s.messages,
-                    {
-                      role: "assistant",
-                      content: "❌ Error: Could not reach LM Studio API.",
-                      id: `msg-${Date.now()}-${Math.random()
-                        .toString(36)
-                        .slice(2, 8)}`,
-                    },
-                  ],
-                }
-              : s
-          )
-        );
-      }
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("❌ Error during stream:", err);
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? {
+              ...s,
+              messages: [
+                ...s.messages,
+                { id: `msg-error-${Date.now()}`, role: "assistant", content: `Error: ${err.message}` },
+              ],
+            }
+          : s
+      )
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleCopy = async (text, id) => {
     try {
@@ -767,7 +743,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
           style={{ textAlign: "center", padding: "1rem" }}
         >
           <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
-          <select
+          {/* <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
             style={{
@@ -792,7 +768,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
             <option value="deepseek-coder-6.7b-instruct">
               deepseek-coder-6.7b-instruct
             </option>
-          </select>
+          </select> */}
           {/* <header className="header">
           <img src="/NVvalues.png" alt="NV Logo" height="50px" style={{ height: "100%", width: "100%" }}></img>
           NewVision Chatboard */}
