@@ -22,10 +22,6 @@ SyntaxHighlighter.registerLanguage("json", json);
 
 function App() {
   const [sessions, setSessions] = useState([]);
-  const sessionsRef = useRef(sessions); // <-- new
-  useEffect(() => {
-    sessionsRef.current = sessions;
-  }, [sessions]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,25 +56,6 @@ function App() {
     // show scrollbar if content exceeds max height
     ta.style.overflowY =
       ta.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
-  };
-
-  // <-- New helper: safely append streaming chunks so words don't join -->
-  const appendChunk = (prev, chunk) => {
-    if (!chunk) return prev;
-    if (!prev) return chunk;
-
-    // If the last char of prev and first char of chunk are both word characters,
-    // insert a space to avoid joining words that were split across chunks.
-    const prevLast = prev[prev.length - 1];
-    const first = chunk[0];
-
-    const isPrevWordChar = /\w/.test(prevLast);
-    const isFirstWordChar = /\w/.test(first);
-
-    if (isPrevWordChar && isFirstWordChar) {
-      return prev + " " + chunk;
-    }
-    return prev + chunk;
   };
 
   // === VOICE: initialize recognition once (safe, added without removing code) ===
@@ -270,28 +247,32 @@ function App() {
     }
   };
 
-const handleSend = async () => {
+  const handleSend = async () => {
   if (!input.trim() || !activeSessionId) return;
 
   const userMessage = { id: `msg-${Date.now()}`, role: "user", content: input };
 
-  // 🧠 Add user message
-  setSessions((prev) =>
+  // Add user message to active session
+    setSessions((prev) =>
     prev.map((s) =>
       s.id === activeSessionId
         ? {
             ...s,
             title:
-              s.title === "New Conversation" ? input.slice(0, 30) : s.title,
+              s.title === "New Conversation"
+                ? input.slice(0, 30) // first few words of the user input
+                : s.title,
             messages: [...(s.messages || []), userMessage],
           }
         : s
     )
   );
+
+
   setInput("");
   setLoading(true);
 
-  // Assistant placeholder
+  // Create placeholder assistant message
   const assistantMessage = {
     id: `msg-${Date.now()}-assistant`,
     role: "assistant",
@@ -308,139 +289,55 @@ const handleSend = async () => {
 
   try {
     controllerRef.current = new AbortController();
-    console.log("📘 Asking /ask-docs (stream)...");
+     const systemPrompt = {
+      role: "system",
+      content: `You are a helpful assistant who knows the following team members:
+${JSON.stringify(profiles.users, null, 2)}
+If the user asks about them, answer using this info. Otherwise, respond normally.`,
+    };
+    // Get the current session’s messages
+    const activeMessages =
+      sessions.find((s) => s.id === activeSessionId)?.messages || [];
 
-    const response = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/ask-docs", {
+    const res = await fetch("http://localhost:5000/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: input }),
+      body: JSON.stringify({
+        model: "meta-llama/llama-3-8b-instruct", // ✅ match backend
+        messages: [systemPrompt, ...activeMessages, userMessage],
+      }),
       signal: controllerRef.current.signal,
     });
 
-    if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+    if (!res.ok) throw new Error(`Backend error: ${res.statusText}`);
+    if (!res.body) throw new Error("No valid stream received from backend");
 
-    const reader = response.body.getReader();
+    const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8");
-    let buffer = "";
     let fullText = "";
-    let gotAnswerFromDocs = false;
+    let done = false;
 
-    // 🔁 Read streaming chunks
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line);
 
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop(); // last incomplete part stays in buffer
-
-      for (const part of parts) {
-        if (!part.startsWith("data:")) continue;
-        const dataStr = part.replace("data:", "").trim();
-        if (dataStr === "[DONE]") continue;
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          const content = parsed.content || "";
-          const source = parsed.source || "openai";
-
-          if (content) {
-            gotAnswerFromDocs = source === "docs";
-
-            // use safe append to avoid joining words
-            fullText = appendChunk(fullText, content);
-
-            // 🔄 Live update UI
-            setSessions((prev) =>
-              prev.map((s) =>
-                s.id === activeSessionId
-                  ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMessage.id
-                          ? {
-                              ...m,
-                              content: fullText,
-                            }
-                          : m
-                      ),
-                    }
-                  : s
-              )
-            );
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.replace("data: ", "").trim();
+          if (data === "[DONE]") {
+            done = true;
+            break;
           }
-        } catch (err) {
-          console.warn("⚠️ Stream JSON parse skipped:", dataStr);
-        }
-      }
-    }
-
-    console.log("📘 Stream finished. Got answer from docs:", gotAnswerFromDocs);
-
-    // --- SMARTER FALLBACK DECISION ---
-    // Only call the completions fallback when the docs stream did not provide
-    // a meaningful answer (empty / very short / or an explicit "I don't know").
-    const trimmed = fullText.trim();
-    const looksUnhelpful =
-      trimmed.length === 0 ||
-      trimmed.length < 40 ||
-      /i don.?t know|no results|no relevant/i.test(trimmed.toLowerCase());
-
-    const fallbackNeeded = !gotAnswerFromDocs && looksUnhelpful;
-
-    if (fallbackNeeded) {
-      console.log("🤖 Fallback to OpenAI (reason: docs empty/unhelpful)...");
-
-      const systemPrompt = {
-        role: "system",
-        content:
-          "You are a helpful assistant. If no document info is found, answer normally.",
-      };
-
-      // use sessionsRef to ensure we read the latest session messages (including the assistant placeholder)
-      const activeMessages =
-        sessionsRef.current.find((s) => s.id === activeSessionId)?.messages || [];
-
-      const formattedMessages = [
-        systemPrompt,
-        ...activeMessages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: input },
-      ];
-
-      const aiRes = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: formattedMessages,
-        }),
-        signal: controllerRef.current?.signal,
-      });
-
-      if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
-
-      const reader2 = aiRes.body.getReader();
-      const decoder2 = new TextDecoder("utf-8");
-      let openAiText = "";
-
-      while (true) {
-        const { done, value } = await reader2.read();
-        if (done) break;
-        const chunk = decoder2.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((line) => line.startsWith("data: "));
-
-        for (const line of lines) {
-          const data = line.replace("data:", "").trim();
-          if (data === "[DONE]") continue;
-
           try {
             const json = JSON.parse(data);
-            const content = json.choices?.[0]?.delta?.content;
-            if (content) {
-              // safe append for OpenAI stream too
-              openAiText = appendChunk(openAiText, content);
-
-              // Live update assistant message with the OpenAI stream
+            const token = json.choices?.[0]?.delta?.content || "";
+            if (token) {
+              fullText += token;
               setSessions((prev) =>
                 prev.map((s) =>
                   s.id === activeSessionId
@@ -448,7 +345,7 @@ const handleSend = async () => {
                         ...s,
                         messages: s.messages.map((m) =>
                           m.id === assistantMessage.id
-                            ? { ...m, content: openAiText }
+                            ? { ...m, content: fullText }
                             : m
                         ),
                       }
@@ -456,33 +353,22 @@ const handleSend = async () => {
                 )
               );
             }
-          } catch {
-            // skip invalid lines
+          } catch (err) {
+            console.error("⚠️ Parse error:", err);
           }
         }
       }
-      console.log("✅ OpenAI response done.");
-    } else {
-      console.log("ℹ️ Skipping fallback — docs provided a sufficient answer.");
     }
   } catch (err) {
-    if (err.name === "AbortError" || err.message.includes("aborted") || err.message.includes("BodyStreamBuffer")) {
-    console.warn("⚠️ Stream manually stopped by user.");
-    return; // stop silently, no error message in chat
-  }
-    console.error("❌ Error during chat:", err);
+    console.error("❌ Error during stream:", err);
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
           ? {
               ...s,
               messages: [
-                ...(s.messages || []),
-                {
-                  id: `msg-error-${Date.now()}`,
-                  role: "assistant",
-                  content: `Error: ${err.message}`,
-                },
+                ...s.messages,
+                { id: `msg-error-${Date.now()}`, role: "assistant", content: `Error: ${err.message}` },
               ],
             }
           : s
@@ -858,6 +744,35 @@ const handleSend = async () => {
           style={{ textAlign: "center", padding: "1rem" }}
         >
           <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
+          {/* <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            style={{
+              position: "absolute",
+              right: "2rem",
+              backgroundColor: "#ccc",
+              color: "black",
+              border: "none",
+              padding: "0.8rem",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "1rem",
+            }}
+          >
+            <option value="meta-llama-3.1-8b-instruct">
+              meta-llama-3.1-8b-instruct
+            </option>
+            <option value="google/gemma-3-1b">google/gemma-3-1b</option>
+            <option value="deepseek/deepseek-r1-0528-qwen3-8b">
+              deepseek/deepseek-r1-0528-qwen3-8b
+            </option>
+            <option value="deepseek-coder-6.7b-instruct">
+              deepseek-coder-6.7b-instruct
+            </option>
+          </select> */}
+          {/* <header className="header">
+          <img src="/NVvalues.png" alt="NV Logo" height="50px" style={{ height: "100%", width: "100%" }}></img>
+          NewVision Chatboard */}
         </header>
 
         <div

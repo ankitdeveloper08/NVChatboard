@@ -22,10 +22,6 @@ SyntaxHighlighter.registerLanguage("json", json);
 
 function App() {
   const [sessions, setSessions] = useState([]);
-  const sessionsRef = useRef(sessions); // <-- new
-  useEffect(() => {
-    sessionsRef.current = sessions;
-  }, [sessions]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,25 +56,6 @@ function App() {
     // show scrollbar if content exceeds max height
     ta.style.overflowY =
       ta.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
-  };
-
-  // <-- New helper: safely append streaming chunks so words don't join -->
-  const appendChunk = (prev, chunk) => {
-    if (!chunk) return prev;
-    if (!prev) return chunk;
-
-    // If the last char of prev and first char of chunk are both word characters,
-    // insert a space to avoid joining words that were split across chunks.
-    const prevLast = prev[prev.length - 1];
-    const first = chunk[0];
-
-    const isPrevWordChar = /\w/.test(prevLast);
-    const isFirstWordChar = /\w/.test(first);
-
-    if (isPrevWordChar && isFirstWordChar) {
-      return prev + " " + chunk;
-    }
-    return prev + chunk;
   };
 
   // === VOICE: initialize recognition once (safe, added without removing code) ===
@@ -270,229 +247,161 @@ function App() {
     }
   };
 
-const handleSend = async () => {
-  if (!input.trim() || !activeSessionId) return;
+  const handleSend = async () => {
+    if (!input.trim() || !activeSession) return;
 
-  const userMessage = { id: `msg-${Date.now()}`, role: "user", content: input };
-
-  // 🧠 Add user message
-  setSessions((prev) =>
-    prev.map((s) =>
+    // Capture the user's message content so we can use it later (e.g., for renaming)
+    const userMessage = {
+      role: "user",
+      content: input,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    };
+    const updatedSessions = sessions.map((s) =>
       s.id === activeSessionId
-        ? {
-            ...s,
-            title:
-              s.title === "New Conversation" ? input.slice(0, 30) : s.title,
-            messages: [...(s.messages || []), userMessage],
-          }
+        ? { ...s, messages: [...s.messages, userMessage] }
         : s
-    )
-  );
-  setInput("");
-  setLoading(true);
+    );
+    setSessions(updatedSessions);
+    // clear the input for the UI, but we still have userMessage.content for later use
+    setInput("");
+    setLoading(true);
+    // adjust textarea after clearing so it shrinks back
+    setTimeout(() => adjustTextareaHeight(), 0);
 
-  // Assistant placeholder
-  const assistantMessage = {
-    id: `msg-${Date.now()}-assistant`,
-    role: "assistant",
-    content: "",
-  };
-
-  setSessions((prev) =>
-    prev.map((s) =>
-      s.id === activeSessionId
-        ? { ...s, messages: [...(s.messages || []), assistantMessage] }
-        : s
-    )
-  );
-
-  try {
-    controllerRef.current = new AbortController();
-    console.log("📘 Asking /ask-docs (stream)...");
-
-    const response = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/ask-docs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: input }),
-      signal: controllerRef.current.signal,
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-    let fullText = "";
-    let gotAnswerFromDocs = false;
-
-    // 🔁 Read streaming chunks
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop(); // last incomplete part stays in buffer
-
-      for (const part of parts) {
-        if (!part.startsWith("data:")) continue;
-        const dataStr = part.replace("data:", "").trim();
-        if (dataStr === "[DONE]") continue;
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          const content = parsed.content || "";
-          const source = parsed.source || "openai";
-
-          if (content) {
-            gotAnswerFromDocs = source === "docs";
-
-            // use safe append to avoid joining words
-            fullText = appendChunk(fullText, content);
-
-            // 🔄 Live update UI
-            setSessions((prev) =>
-              prev.map((s) =>
-                s.id === activeSessionId
-                  ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMessage.id
-                          ? {
-                              ...m,
-                              content: fullText,
-                            }
-                          : m
-                      ),
-                    }
-                  : s
-              )
-            );
-          }
-        } catch (err) {
-          console.warn("⚠️ Stream JSON parse skipped:", dataStr);
-        }
-      }
-    }
-
-    console.log("📘 Stream finished. Got answer from docs:", gotAnswerFromDocs);
-
-    // --- SMARTER FALLBACK DECISION ---
-    // Only call the completions fallback when the docs stream did not provide
-    // a meaningful answer (empty / very short / or an explicit "I don't know").
-    const trimmed = fullText.trim();
-    const looksUnhelpful =
-      trimmed.length === 0 ||
-      trimmed.length < 40 ||
-      /i don.?t know|no results|no relevant/i.test(trimmed.toLowerCase());
-
-    const fallbackNeeded = !gotAnswerFromDocs && looksUnhelpful;
-
-    if (fallbackNeeded) {
-      console.log("🤖 Fallback to OpenAI (reason: docs empty/unhelpful)...");
-
+    try {
+      controllerRef.current = new AbortController();
       const systemPrompt = {
         role: "system",
-        content:
-          "You are a helpful assistant. If no document info is found, answer normally.",
+        content: `You are a helpful assistant who knows the following team members:
+${JSON.stringify(profiles.users, null, 2)}
+
+If the user asks about them, answer using this info. Otherwise, respond normally.`,
       };
 
-      // use sessionsRef to ensure we read the latest session messages (including the assistant placeholder)
-      const activeMessages =
-        sessionsRef.current.find((s) => s.id === activeSessionId)?.messages || [];
+      const res = await fetch(
+        "https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // model: "google/gemma-3-1b",          ---- change model name if we are changing model in LM Studio ----
+            model: selectedModel,
+            stream: true,
+            messages: [systemPrompt, ...activeSession.messages, userMessage],
+          }),
+          signal: controllerRef.current.signal, // <-- attach abort signal here
+        }
+      );
 
-      const formattedMessages = [
-        systemPrompt,
-        ...activeMessages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: input },
-      ];
+      if (!res.ok || !res.body) throw new Error("No stream received.");
 
-      const aiRes = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: formattedMessages,
-        }),
-        signal: controllerRef.current?.signal,
-      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let fullMessage = "";
+      let done = false;
 
-      if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
+      // Add empty assistant message while streaming (include id)
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                messages: [
+                  ...s.messages,
+                  {
+                    role: "assistant",
+                    content: "",
+                    id: `msg-${Date.now()}-${Math.random()
+                      .toString(36)
+                      .slice(2, 8)}`,
+                  },
+                ],
+              }
+            : s
+        )
+      );
 
-      const reader2 = aiRes.body.getReader();
-      const decoder2 = new TextDecoder("utf-8");
-      let openAiText = "";
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        const chunk = decoder.decode(value, { stream: true });
 
-      while (true) {
-        const { done, value } = await reader2.read();
-        if (done) break;
-        const chunk = decoder2.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((line) => line.startsWith("data: "));
+        const lines = chunk
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line !== "");
 
         for (const line of lines) {
-          const data = line.replace("data:", "").trim();
-          if (data === "[DONE]") continue;
-
-          try {
-            const json = JSON.parse(data);
-            const content = json.choices?.[0]?.delta?.content;
-            if (content) {
-              // safe append for OpenAI stream too
-              openAiText = appendChunk(openAiText, content);
-
-              // Live update assistant message with the OpenAI stream
-              setSessions((prev) =>
-                prev.map((s) =>
-                  s.id === activeSessionId
-                    ? {
-                        ...s,
-                        messages: s.messages.map((m) =>
-                          m.id === assistantMessage.id
-                            ? { ...m, content: openAiText }
-                            : m
-                        ),
-                      }
-                    : s
-                )
-              );
+          if (line.startsWith("data:")) {
+            const data = line.replace("data:", "").trim();
+            if (data === "[DONE]") {
+              done = true;
+              break;
             }
-          } catch {
-            // skip invalid lines
+            try {
+              const json = JSON.parse(data);
+              const token = json.choices?.[0]?.delta?.content || "";
+              if (token) {
+                fullMessage += token;
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.id === activeSessionId
+                      ? {
+                          ...s,
+                          messages: s.messages.map((m, idx) =>
+                            idx === s.messages.length - 1
+                              ? { ...m, content: fullMessage }
+                              : m
+                          ),
+                        }
+                      : s
+                  )
+                );
+              }
+            } catch {}
           }
         }
       }
-      console.log("✅ OpenAI response done.");
-    } else {
-      console.log("ℹ️ Skipping fallback — docs provided a sufficient answer.");
-    }
-  } catch (err) {
-    if (err.name === "AbortError" || err.message.includes("aborted") || err.message.includes("BodyStreamBuffer")) {
-    console.warn("⚠️ Stream manually stopped by user.");
-    return; // stop silently, no error message in chat
-  }
-    console.error("❌ Error during chat:", err);
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSessionId
-          ? {
-              ...s,
-              messages: [
-                ...(s.messages || []),
-                {
-                  id: `msg-error-${Date.now()}`,
-                  role: "assistant",
-                  content: `Error: ${err.message}`,
-                },
-              ],
-            }
-          : s
-      )
-    );
-  } finally {
-    setLoading(false);
-  }
-};
 
+      // Rename the chat if it still has a default "New..." title using the captured userMessage content
+      if (
+        activeSession &&
+        typeof activeSession.title === "string" &&
+        activeSession.title.startsWith("New") &&
+        userMessage.content.trim()
+      ) {
+        renameChat(activeSessionId, userMessage.content.slice(0, 30));
+      }
+    } catch (err) {
+      if (err.name === "AbortError") {
+        console.log("🛑 Generation stopped by user.");
+        // Don't show any error message in chat — just stop gracefully
+      } else {
+        console.error(err);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? {
+                  ...s,
+                  messages: [
+                    ...s.messages,
+                    {
+                      role: "assistant",
+                      content: "❌ Error: Could not reach LM Studio API.",
+                      id: `msg-${Date.now()}-${Math.random()
+                        .toString(36)
+                        .slice(2, 8)}`,
+                    },
+                  ],
+                }
+              : s
+          )
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCopy = async (text, id) => {
     try {
@@ -858,6 +767,35 @@ const handleSend = async () => {
           style={{ textAlign: "center", padding: "1rem" }}
         >
           <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            style={{
+              position: "absolute",
+              right: "2rem",
+              backgroundColor: "#ccc",
+              color: "black",
+              border: "none",
+              padding: "0.8rem",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "1rem",
+            }}
+          >
+            <option value="meta-llama-3.1-8b-instruct">
+              meta-llama-3.1-8b-instruct
+            </option>
+            <option value="google/gemma-3-1b">google/gemma-3-1b</option>
+            <option value="deepseek/deepseek-r1-0528-qwen3-8b">
+              deepseek/deepseek-r1-0528-qwen3-8b
+            </option>
+            <option value="deepseek-coder-6.7b-instruct">
+              deepseek-coder-6.7b-instruct
+            </option>
+          </select>
+          {/* <header className="header">
+          <img src="/NVvalues.png" alt="NV Logo" height="50px" style={{ height: "100%", width: "100%" }}></img>
+          NewVision Chatboard */}
         </header>
 
         <div

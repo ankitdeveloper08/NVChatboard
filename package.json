@@ -2,7 +2,8 @@
   "name": "ai-chatboard",
   "version": "1.0.0",
   "private": true,
-  "proxy": "http://127.0.0.1:1234",
+  "proxy": "http://localhost:5000",
+  "proxy1": "http://127.0.0.1:1234",
   "dependencies": {
     "body-parser": "^2.2.0",
     "bootstrap": "^5.3.8",

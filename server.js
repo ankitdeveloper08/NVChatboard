@@ -1,125 +1,92 @@
-// import express from "express";
-// import cors from "cors";
-// import fetch from "node-fetch";
-
-// const app = express();
-// const PORT = 5000;
-
-// // Middleware
-// app.use(cors());
-// app.use(express.json());
-
-// // Proxy route to LM Studio
-// app.post("/api/generate", async (req, res) => {
-//   try {
-//     const { messages } = req.body;
-
-//     // Send request to LM Studio API
-//     const response = await fetch("http://127.0.0.1:1234/v1/chat/completions", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({
-//         model: "google/gemma-3-1b",
-//         messages,
-//         temperature: 0.7,
-//         max_tokens: 512,
-//       }),
-//     });
-
-//     const data = await response.json();
-
-//     if (!data || !data.choices || !data.choices[0]?.message?.content) {
-//       console.error("⚠️ Invalid response from LM Studio:", data);
-//       return res.status(500).json({ error: "Invalid response from LM Studio" });
-//     }
-
-//     // Extract and return message content
-//     res.json({
-//       reply: data.choices[0].message.content,
-//     });
-//   } catch (error) {
-//     console.error("❌ Error contacting local LM Studio:", error);
-//     res.status(500).json({ error: "Error contacting LM Studio" });
-//   }
-// });
-
-// app.listen(PORT, () => {
-//   console.log(`✅ Proxy running on http://localhost:${PORT}`);
-// });
 import express from "express";
-import cors from "cors";
 import fetch from "node-fetch";
-import fs from "fs";
+import dotenv from "dotenv";
+import cors from "cors";
+import { Readable } from "stream";
+
+dotenv.config();
 
 const app = express();
+app.use(express.json());
+app.use(cors());
+
 const PORT = 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+const OPENROUTER_API_KEY = "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";
 
-// Load user profile
-let userProfile = {};
-try {
-  const raw = fs.readFileSync("./profile.json", "utf-8");
-  userProfile = JSON.parse(raw);
-  console.log("📘 Loaded user profile:", userProfile.name);
-} catch (err) {
-  console.warn("⚠️ No profile.json found or invalid JSON, continuing without profile.");
-}
+const DEFAULT_MODEL = "meta-llama/llama-3-8b-instruct";
 
-// Proxy route to LM Studio
-app.post("/api/generate", async (req, res) => {
+app.post("/v1/chat/completions", async (req, res) => {
+  const { model, messages } = req.body;
+  console.log("📩 Incoming stream request:", { model, messages });
+
   try {
-    const { messages } = req.body;
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
 
-    // Construct system message using profile.json
-    const systemMessage = {
-      role: "system",
-      content: `You are a helpful AI assistant. You know the following about the user:
-Name: ${userProfile.name || "Unknown"}
-Role: ${userProfile.role || "Not specified"}
-Skills: ${(userProfile.skills || []).join(", ")}
-Experience: ${userProfile.experience || "Not specified"}
-Company: ${userProfile.company || "Not specified"}
-Location: ${userProfile.location || "Not specified"}
-Goals: ${(userProfile.goals || []).join(", ")}
-
-Always personalize responses based on this profile.`,
-    };
-
-    // Merge system message with user messages
-    const fullMessages = [systemMessage, ...messages];
-
-    // Send request to LM Studio API
-    const response = await fetch("http://127.0.0.1:1234/v1/chat/completions", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        model: "google/gemma-3-1b",
-        messages: fullMessages,
-        temperature: 0.7,
-        max_tokens: 512,
+        model: model || DEFAULT_MODEL,
+        messages,
+        stream: true,
       }),
     });
 
-    const data = await response.json();
-
-    if (!data || !data.choices || !data.choices[0]?.message?.content) {
-      console.error("⚠️ Invalid response from LM Studio:", data);
-      return res.status(500).json({ error: "Invalid response from LM Studio" });
+    if (!response.ok || !response.body) {
+      const text = await response.text();
+      console.error("❌ OpenRouter returned error:", text);
+      res.write(`data: ${JSON.stringify({ error: { message: text } })}\n\n`);
+      res.end();
+      return;
     }
 
-    // Extract and return message content
-    res.json({
-      reply: data.choices[0].message.content,
+    // ✅ Convert the Web stream to Node stream
+    const readable =
+      typeof response.body.getReader === "function"
+        ? Readable.fromWeb(response.body)
+        : response.body;
+
+    readable.on("data", (chunk) => {
+      const text = chunk.toString("utf8");
+      const lines = text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line);
+
+      for (const line of lines) {
+        if (line.startsWith("data:")) {
+          res.write(`${line}\n\n`);
+        }
+      }
     });
-  } catch (error) {
-    console.error("❌ Error contacting local LM Studio:", error);
-    res.status(500).json({ error: "Error contacting LM Studio" });
+
+    readable.on("end", () => {
+      res.write("data: [DONE]\n\n");
+      res.end();
+    });
+
+    readable.on("error", (err) => {
+      console.error("❌ Stream error:", err.message);
+      if (!res.headersSent) {
+        res.write(
+          `data: ${JSON.stringify({ error: { message: err.message } })}\n\n`
+        );
+        res.end();
+      }
+    });
+  } catch (err) {
+    console.error("❌ Exception:", err.message);
+    if (!res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: { message: err.message } })}\n\n`);
+      res.end();
+    }
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Proxy running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
