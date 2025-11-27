@@ -1,11 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); // 🔹 For inline error message
+  const [error, setError] = useState(""); // For inline error message
   const navigate = useNavigate();
+
+  // 🔹 Redirect if already logged in
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    if (isAuthenticated) {
+      navigate("/chat", { replace: true });
+    }
+  }, [navigate]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -13,9 +21,9 @@ const Login = () => {
     // Hardcoded credentials
     if (username === "admin" && password === "1234") {
       localStorage.setItem("isAuthenticated", "true");
-      navigate("/chat");
+      navigate("/chat", { replace: true });
     } else {
-      setError("Invalid username or password"); // 🔹 Set error instead of alert
+      setError("Invalid username or password");
     }
   };
 
@@ -33,7 +41,7 @@ const Login = () => {
       {/* Logo */}
       <div style={{ position: "absolute", top: "40px", display: "flex", alignItems: "center" }}>
         <img
-          src="/NVlogo.jpg" // Replace with your NewVision logo path
+          src="/NVlogo.jpg"
           alt="NewVision Logo"
           style={{ width: "120px", height: "auto" }}
         />
@@ -89,7 +97,7 @@ const Login = () => {
             }}
           />
 
-          {/* 🔴 Error Message */}
+          {/* Error Message */}
           {error && (
             <div
               style={{
