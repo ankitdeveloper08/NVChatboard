@@ -532,3 +532,46 @@ button[disabled] {
 .message.assistant p + p {
   margin-top: 3px; /* was 6px, now half */
 }
+/* --- Ultra-compact Markdown layout (ChatGPT-like) --- */
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3,
+.message.assistant h4,
+.message.assistant h5,
+.message.assistant h6 {
+  margin: 6px 0 3px 0 !important;
+  line-height: 1.25;
+}
+
+.message.assistant p {
+  margin: 1px 0 !important;
+  line-height: 1.35;
+}
+
+.message.assistant ul,
+.message.assistant ol {
+  margin: 2px 0 2px 18px !important;
+  padding-left: 14px !important;
+}
+
+.message.assistant li {
+  margin: 0 !important;
+  line-height: 1.35;
+}
+
+.message.assistant p + ul,
+.message.assistant p + ol {
+  margin-top: 1px !important;
+}
+
+.message.assistant pre,
+.message.assistant code {
+  margin: 2px 0 !important;
+  line-height: 1.3;
+}
+
+/* Avoid big gaps between consecutive Markdown blocks */
+.message.assistant * + * {
+  margin-top: 1px !important;
+}
+
