@@ -279,7 +279,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
       };
 
       const res = await fetch(
-        "https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions",
+        "https://openaiservers.onrender.com/v1/chat/completions",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

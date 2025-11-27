@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
@@ -21,6 +22,7 @@ SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
 
 function ChatBoard() {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const sessionsRef = useRef(sessions); // <-- new
   useEffect(() => {
@@ -41,6 +43,11 @@ function ChatBoard() {
   const [showSearch, setShowSearch] = useState(false);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated"); // ❌ Remove login session
+    navigate("/"); // 🔄 Redirect to Login page
+  };
 
   // === VOICE: new state + ref (added, doesn't remove any existing code) ===
   const [listening, setListening] = useState(false);
@@ -322,7 +329,7 @@ const handleSend = async () => {
     controllerRef.current = new AbortController();
     console.log("📘 Asking /ask-docs (stream)...");
 
-    const response = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/ask-docs", {
+    const response = await fetch("https://openaiservers.onrender.com/ask-docs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: input }),
@@ -419,7 +426,7 @@ const handleSend = async () => {
         { role: "user", content: input },
       ];
 
-      const aiRes = await fetch("https://sawdusty-unscaly-kyong.ngrok-free.dev/v1/chat/completions", {
+      const aiRes = await fetch("https://openaiservers.onrender.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -611,8 +618,8 @@ const handleSend = async () => {
                       onClick={() => setActiveSessionId(s.id)}
                       style={{ cursor: "pointer" }}
                     >
-                      {s.title.length > 25
-                        ? s.title.slice(0, 25) + "..."
+                      {s.title.length > 20
+                        ? s.title.slice(0, 20)
                         : s.title}
                     </div>
                   )}
@@ -870,6 +877,20 @@ const handleSend = async () => {
           style={{ textAlign: "center", padding: "1rem" }}
         >
           <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
+          <button 
+        onClick={handleLogout}
+        style={{
+          background: "black",
+          color: "#fff",
+          padding: "10px 15px",
+          borderRadius: "8px",
+          border: "none",
+          cursor: "pointer",
+          float: "right",
+        }}
+      >
+        Logout
+      </button>
         </header>
 
         <div

@@ -299,7 +299,7 @@ If the user asks about them, answer using this info. Otherwise, respond normally
     const activeMessages =
       sessions.find((s) => s.id === activeSessionId)?.messages || [];
 
-    const res = await fetch("http://localhost:5000/v1/chat/completions", {
+    const res = await fetch("https://openaiservers.onrender.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

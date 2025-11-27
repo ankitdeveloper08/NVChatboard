@@ -2,7 +2,7 @@
   "name": "ai-chatboard",
   "version": "1.0.0",
   "private": true,
-  "proxy": "http://localhost:5000",
+  "proxy": "https://openaiservers.onrender.com",
   "proxy1": "http://127.0.0.1:1234",
   "dependencies": {
     "body-parser": "^2.2.0",
