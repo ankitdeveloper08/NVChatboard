@@ -10,7 +10,7 @@ const App = () => {
     <Router>
       <Routes>
         {/* Login Page */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Login />} />
 
         {/* Protected Chat Page */}
         <Route
@@ -23,7 +23,7 @@ const App = () => {
         />
 
         {/* Redirect any unknown route to /login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
