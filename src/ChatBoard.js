@@ -39,11 +39,14 @@ function ChatBoard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userName, setUserName] = useState("User");
   const [selectedModel, setSelectedModel] = useState(
-    "meta-llama-3.1-8b-instruct"
+    "meta-llama-3.1-8b-instruct",
   );
   const [showSearch, setShowSearch] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showFooterMenu, setShowFooterMenu] = useState(false);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated"); // ❌ Remove login session
@@ -81,35 +84,49 @@ function ChatBoard() {
   };
 
   // <-- New helper: safely append streaming chunks so words don't join -->
-const appendChunk = (prev, chunk) => {
-  if (!chunk) return prev;
-  if (!prev) return chunk;
+  const appendChunk = (prev, chunk) => {
+    if (!chunk) return prev;
+    if (!prev) return chunk;
 
-  // Trim leading spaces on the new chunk if the previous text
-  // doesn’t end with punctuation or whitespace.
-  const prevLast = prev[prev.length - 1];
-  const first = chunk[0];
+    // Trim leading spaces on the new chunk if the previous text
+    // doesn’t end with punctuation or whitespace.
+    const prevLast = prev[prev.length - 1];
+    const first = chunk[0];
 
-  // If the last character is a letter and the first is a lowercase letter,
-  // don't add any space — likely a split word.
-  if (/[a-zA-Z0-9]$/.test(prevLast) && /^[a-z0-9]/.test(first)) {
+    // If the last character is a letter and the first is a lowercase letter,
+    // don't add any space — likely a split word.
+    if (/[a-zA-Z0-9]$/.test(prevLast) && /^[a-z0-9]/.test(first)) {
+      return prev + chunk;
+    }
+
+    // If both are normal words but split by tokenization, add a single space
+    if (
+      /\w$/.test(prevLast) &&
+      /^\w/.test(first) &&
+      !/\s$/.test(prev) &&
+      !/^\s/.test(chunk)
+    ) {
+      return prev + " " + chunk;
+    }
+
     return prev + chunk;
-  }
+  };
 
-  // If both are normal words but split by tokenization, add a single space
-  if (
-    /\w$/.test(prevLast) &&
-    /^\w/.test(first) &&
-    !/\s$/.test(prev) &&
-    !/^\s/.test(chunk)
-  ) {
-    return prev + " " + chunk;
-  }
-
-  return prev + chunk;
-};
-
-
+  const menuItemStyle = {
+    width: "100%",
+    padding: "0.75rem 1rem",
+    background: "none",
+    border: "none",
+    textAlign: "left",
+    cursor: "pointer",
+    fontSize: "0.95rem",
+    color: "#111",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    transition: "background 0.2s",
+    outline: "none",
+  };
 
   // === VOICE: initialize recognition once (safe, added without removing code) ===
   useEffect(() => {
@@ -215,7 +232,7 @@ const appendChunk = (prev, chunk) => {
                 id: `msg-${Date.now()}-${Math.random()
                   .toString(36)
                   .slice(2, 8)}`,
-              }
+              },
         ),
       }));
       setSessions(withIds);
@@ -300,177 +317,95 @@ const appendChunk = (prev, chunk) => {
     }
   };
 
-const handleSend = async () => {
-  if (!input.trim() || !activeSessionId) return;
+  const handleSend = async () => {
+    if (!input.trim() || !activeSessionId) return;
 
-  const userMessage = { id: `msg-${Date.now()}`, role: "user", content: input };
+    const userMessage = {
+      id: `msg-${Date.now()}`,
+      role: "user",
+      content: input,
+    };
 
-  // 🧠 Add user message
-  setSessions((prev) =>
-    prev.map((s) =>
-      s.id === activeSessionId
-        ? {
-            ...s,
-            title:
-              s.title === "New Conversation" ? input.slice(0, 30) : s.title,
-            messages: [...(s.messages || []), userMessage],
-          }
-        : s
-    )
-  );
-  setInput("");
-  setLoading(true);
+    // 🧠 Add user message
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? {
+              ...s,
+              title:
+                s.title === "New Conversation" ? input.slice(0, 30) : s.title,
+              messages: [...(s.messages || []), userMessage],
+            }
+          : s,
+      ),
+    );
+    setInput("");
+    setLoading(true);
 
-  // Assistant placeholder
-  const assistantMessage = {
-    id: `msg-${Date.now()}-assistant`,
-    role: "assistant",
-    content: "",
-  };
+    // Assistant placeholder
+    const assistantMessage = {
+      id: `msg-${Date.now()}-assistant`,
+      role: "assistant",
+      content: "",
+    };
 
-  setSessions((prev) =>
-    prev.map((s) =>
-      s.id === activeSessionId
-        ? { ...s, messages: [...(s.messages || []), assistantMessage] }
-        : s
-    )
-  );
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, messages: [...(s.messages || []), assistantMessage] }
+          : s,
+      ),
+    );
 
-  try {
-    controllerRef.current = new AbortController();
-    console.log("📘 Asking /ask-docs (stream)...");
+    try {
+      controllerRef.current = new AbortController();
+      console.log("📘 Asking /ask-docs (stream)...");
 
-    const response = await fetch("https://openaiservers.onrender.com/ask-docs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: input }),
-      signal: controllerRef.current.signal,
-    });
+      const response = await fetch(
+        "https://openaiservers.onrender.com/ask-docs",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: input }),
+          signal: controllerRef.current.signal,
+        },
+      );
 
-    if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      if (!response.ok)
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-    let fullText = "";
-    let gotAnswerFromDocs = false;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let fullText = "";
+      let gotAnswerFromDocs = false;
 
-    // 🔁 Read streaming chunks
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop(); // last incomplete part stays in buffer
-
-      for (const part of parts) {
-        if (!part.startsWith("data:")) continue;
-        const dataStr = part.replace("data:", "").trim();
-        if (dataStr === "[DONE]") continue;
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          const content = parsed.content || "";
-          const source = parsed.source || "openai";
-
-          if (content) {
-            gotAnswerFromDocs = source === "docs";
-
-            // use safe append to avoid joining words
-            fullText = appendChunk(fullText, content);
-
-            // 🔄 Live update UI
-            setSessions((prev) =>
-              prev.map((s) =>
-                s.id === activeSessionId
-                  ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMessage.id
-                          ? {
-                              ...m,
-                              content: fullText,
-                            }
-                          : m
-                      ),
-                    }
-                  : s
-              )
-            );
-          }
-        } catch (err) {
-          console.warn("⚠️ Stream JSON parse skipped:", dataStr);
-        }
-      }
-    }
-
-    console.log("📘 Stream finished. Got answer from docs:", gotAnswerFromDocs);
-
-    // --- SMARTER FALLBACK DECISION ---
-    // Only call the completions fallback when the docs stream did not provide
-    // a meaningful answer (empty / very short / or an explicit "I don't know").
-    const trimmed = fullText.trim();
-    const looksUnhelpful =
-      trimmed.length === 0 ||
-      trimmed.length < 40 ||
-      /i don.?t know|no results|no relevant/i.test(trimmed.toLowerCase());
-
-    const fallbackNeeded = !gotAnswerFromDocs && looksUnhelpful;
-
-    if (fallbackNeeded) {
-      console.log("🤖 Fallback to OpenAI (reason: docs empty/unhelpful)...");
-
-      const systemPrompt = {
-        role: "system",
-        content:
-          "You are a helpful assistant. If no document info is found, answer normally.",
-      };
-
-      // use sessionsRef to ensure we read the latest session messages (including the assistant placeholder)
-      const activeMessages =
-        sessionsRef.current.find((s) => s.id === activeSessionId)?.messages || [];
-
-      const formattedMessages = [
-        systemPrompt,
-        ...activeMessages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: input },
-      ];
-
-      const aiRes = await fetch("https://openaiservers.onrender.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: formattedMessages,
-        }),
-        signal: controllerRef.current?.signal,
-      });
-
-      if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
-
-      const reader2 = aiRes.body.getReader();
-      const decoder2 = new TextDecoder("utf-8");
-      let openAiText = "";
-
+      // 🔁 Read streaming chunks
       while (true) {
-        const { done, value } = await reader2.read();
+        const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder2.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((line) => line.startsWith("data: "));
 
-        for (const line of lines) {
-          const data = line.replace("data:", "").trim();
-          if (data === "[DONE]") continue;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop(); // last incomplete part stays in buffer
+
+        for (const part of parts) {
+          if (!part.startsWith("data:")) continue;
+          const dataStr = part.replace("data:", "").trim();
+          if (dataStr === "[DONE]") continue;
 
           try {
-            const json = JSON.parse(data);
-            const content = json.choices?.[0]?.delta?.content;
-            if (content) {
-              // safe append for OpenAI stream too
-              openAiText = appendChunk(openAiText, content);
+            const parsed = JSON.parse(dataStr);
+            const content = parsed.content || "";
+            const source = parsed.source || "openai";
 
-              // Live update assistant message with the OpenAI stream
+            if (content) {
+              gotAnswerFromDocs = source === "docs";
+
+              // use safe append to avoid joining words
+              fullText = appendChunk(fullText, content);
+
+              // 🔄 Live update UI
               setSessions((prev) =>
                 prev.map((s) =>
                   s.id === activeSessionId
@@ -478,51 +413,155 @@ const handleSend = async () => {
                         ...s,
                         messages: s.messages.map((m) =>
                           m.id === assistantMessage.id
-                            ? { ...m, content: openAiText }
-                            : m
+                            ? {
+                                ...m,
+                                content: fullText,
+                              }
+                            : m,
                         ),
                       }
-                    : s
-                )
+                    : s,
+                ),
               );
             }
-          } catch {
-            // skip invalid lines
+          } catch (err) {
+            console.warn("⚠️ Stream JSON parse skipped:", dataStr);
           }
         }
       }
-      console.log("✅ OpenAI response done.");
-    } else {
-      console.log("ℹ️ Skipping fallback — docs provided a sufficient answer.");
-    }
-  } catch (err) {
-    if (err.name === "AbortError" || err.message.includes("aborted") || err.message.includes("BodyStreamBuffer")) {
-    console.warn("⚠️ Stream manually stopped by user.");
-    return; // stop silently, no error message in chat
-  }
-    console.error("❌ Error during chat:", err);
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSessionId
-          ? {
-              ...s,
-              messages: [
-                ...(s.messages || []),
-                {
-                  id: `msg-error-${Date.now()}`,
-                  role: "assistant",
-                  content: `Error: ${err.message}`,
-                },
-              ],
-            }
-          : s
-      )
-    );
-  } finally {
-    setLoading(false);
-  }
-};
 
+      console.log(
+        "📘 Stream finished. Got answer from docs:",
+        gotAnswerFromDocs,
+      );
+
+      // --- SMARTER FALLBACK DECISION ---
+      // Only call the completions fallback when the docs stream did not provide
+      // a meaningful answer (empty / very short / or an explicit "I don't know").
+      const trimmed = fullText.trim();
+      const looksUnhelpful =
+        trimmed.length === 0 ||
+        trimmed.length < 40 ||
+        /i don.?t know|no results|no relevant/i.test(trimmed.toLowerCase());
+
+      const fallbackNeeded = !gotAnswerFromDocs && looksUnhelpful;
+
+      if (fallbackNeeded) {
+        console.log("🤖 Fallback to OpenAI (reason: docs empty/unhelpful)...");
+
+        const systemPrompt = {
+          role: "system",
+          content:
+            "You are a helpful assistant. If no document info is found, answer normally.",
+        };
+
+        // use sessionsRef to ensure we read the latest session messages (including the assistant placeholder)
+        const activeMessages =
+          sessionsRef.current.find((s) => s.id === activeSessionId)?.messages ||
+          [];
+
+        const formattedMessages = [
+          systemPrompt,
+          ...activeMessages.map((m) => ({ role: m.role, content: m.content })),
+          { role: "user", content: input },
+        ];
+
+        const aiRes = await fetch(
+          "https://openaiservers.onrender.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "gpt-4o-mini",
+              messages: formattedMessages,
+            }),
+            signal: controllerRef.current?.signal,
+          },
+        );
+
+        if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
+
+        const reader2 = aiRes.body.getReader();
+        const decoder2 = new TextDecoder("utf-8");
+        let openAiText = "";
+
+        while (true) {
+          const { done, value } = await reader2.read();
+          if (done) break;
+          const chunk = decoder2.decode(value, { stream: true });
+          const lines = chunk
+            .split("\n")
+            .filter((line) => line.startsWith("data: "));
+
+          for (const line of lines) {
+            const data = line.replace("data:", "").trim();
+            if (data === "[DONE]") continue;
+
+            try {
+              const json = JSON.parse(data);
+              const content = json.choices?.[0]?.delta?.content;
+              if (content) {
+                // safe append for OpenAI stream too
+                openAiText = appendChunk(openAiText, content);
+
+                // Live update assistant message with the OpenAI stream
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    s.id === activeSessionId
+                      ? {
+                          ...s,
+                          messages: s.messages.map((m) =>
+                            m.id === assistantMessage.id
+                              ? { ...m, content: openAiText }
+                              : m,
+                          ),
+                        }
+                      : s,
+                  ),
+                );
+              }
+            } catch {
+              // skip invalid lines
+            }
+          }
+        }
+        console.log("✅ OpenAI response done.");
+      } else {
+        console.log(
+          "ℹ️ Skipping fallback — docs provided a sufficient answer.",
+        );
+      }
+    } catch (err) {
+      if (
+        err.name === "AbortError" ||
+        err.message.includes("aborted") ||
+        err.message.includes("BodyStreamBuffer")
+      ) {
+        console.warn("⚠️ Stream manually stopped by user.");
+        return; // stop silently, no error message in chat
+      }
+      console.error("❌ Error during chat:", err);
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                messages: [
+                  ...(s.messages || []),
+                  {
+                    id: `msg-error-${Date.now()}`,
+                    role: "assistant",
+                    content: `Error: ${err.message}`,
+                  },
+                ],
+              }
+            : s,
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCopy = async (text, id) => {
     try {
@@ -545,7 +584,13 @@ const handleSend = async () => {
 
   // --- JSX ---
   return (
-    <div className="app-container" onClick={() => setOpenMenuId(null)}>
+    <div
+      className="app-container"
+      onClick={() => {
+        setOpenMenuId(null);
+        setShowUserMenu(false);
+      }}
+    >
       {/* Sidebar */}
       <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
         {/* (toggle will appear inside header on the right when expanded) */}
@@ -629,9 +674,7 @@ const handleSend = async () => {
                       onClick={() => setActiveSessionId(s.id)}
                       style={{ cursor: "pointer" }}
                     >
-                      {s.title.length > 20
-                        ? s.title.slice(0, 20)
-                        : s.title}
+                      {s.title.length > 20 ? s.title.slice(0, 20) : s.title}
                     </div>
                   )}
                 </div>
@@ -728,16 +771,211 @@ const handleSend = async () => {
           {!isSidebarCollapsed && (
             <div
               style={{
-                background: "gainsboro",
-                color: "black",
-                // border: "none",
-                padding: "12px",
+                position: "relative",
+                background: "#f2f4f7",
+                color: "#1f2937",
+                padding: "12px 14px",
                 margin: "12px",
-                borderRadius: "4px",
-                fontWeight: "500",
+                borderRadius: "10px",
+                fontWeight: "600",
+                fontSize: "0.95rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.75rem",
+                border: "1px solid #e5e7eb",
+                cursor: "pointer",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFooterMenu((prev) => !prev);
               }}
             >
-              NewVision Chatboard v1.2
+              <div>
+                <div style={{ fontSize: "0.9rem", color: "#111" }}>
+                  {userName || "Unknown user"}
+                </div>
+              </div>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  background: "#10a37f",
+                  color: "#fff",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                }}
+              >
+                {userName ? userName.charAt(0).toUpperCase() : "U"}
+              </span>
+
+              {showFooterMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "100%",
+                    left: 0,
+                    right: 0,
+                    marginBottom: "10px",
+                    backgroundColor: "#fff",
+                    border: "1px solid #e5e5e5",
+                    borderRadius: "20px",
+                    boxShadow: "0 18px 50px rgba(15, 23, 42, 0.18)",
+                    width: "100%",
+                    zIndex: 1000,
+                    overflow: "hidden",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    style={{
+                      padding: "1rem 1rem 0.75rem 1rem",
+                      borderBottom: "1px solid #e5e5e5",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "42px",
+                          height: "42px",
+                          borderRadius: "50%",
+                          backgroundColor: "#10a37f",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: "1rem",
+                        }}
+                      >
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "1rem",
+                            fontWeight: 700,
+                            color: "#111",
+                          }}
+                        >
+                          {userName}
+                        </p>
+                        <p
+                          style={{
+                            margin: "4px 0 0 0",
+                            fontSize: "0.82rem",
+                            color: "#6b7280",
+                          }}
+                        >
+                          Free
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding: "0.75rem 0" }}>
+                    <button
+                      onClick={() => setShowFooterMenu(false)}
+                      style={menuItemStyle}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "#f5f5f5")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
+                    >
+                      <span>⭐</span> Upgrade plan
+                    </button>
+                    <button
+                      onClick={() => setShowFooterMenu(false)}
+                      style={menuItemStyle}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "#f5f5f5")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
+                    >
+                      <span>✨</span> Personalization
+                    </button>
+                    <button
+                      onClick={() => setShowFooterMenu(false)}
+                      style={menuItemStyle}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "#f5f5f5")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
+                    >
+                      <span>👤</span> Profile
+                    </button>
+                    <button
+                      onClick={() => setShowFooterMenu(false)}
+                      style={menuItemStyle}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "#f5f5f5")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
+                    >
+                      <span>⚙️</span> Settings
+                    </button>
+                    <button
+                      onClick={() => setShowFooterMenu(false)}
+                      style={menuItemStyle}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.background = "#f5f5f5")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
+                    >
+                      <span>❓</span> Help
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      padding: "0.75rem 1rem 1rem 1rem",
+                      borderTop: "1px solid #e5e5e5",
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setShowFooterMenu(false);
+                        handleLogout();
+                      }}
+                      style={{
+                        padding: "0 20px",
+                        backgroundColor: "#202123",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "1rem",
+                        fontWeight: 500,
+                        height: "40px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span>🚪</span> Log out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -867,7 +1105,9 @@ const handleSend = async () => {
               onClose={() => setShowSearch(false)}
             />
           )}
+          
         </div>
+         
       )}
 
       {/* Main Chat Area */}
@@ -885,40 +1125,21 @@ const handleSend = async () => {
       >
         <header
           className="header"
-          style={{ padding: "1rem" }}
+          style={{
+            padding: "1rem",
+            borderBottom: "1px solid #e5e5e5",
+            backgroundColor: "#fff",
+          }}
         >
           <div
             style={{
-              display: "flex",
+              // display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               gap: "1rem",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                <span style={{ fontSize: "0.85rem", color: "#555", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Login ID
-                </span>
-                <span style={{ fontSize: "1rem", fontWeight: 700, color: "#111" }}>
-                  {userName || "Unknown user"}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                background: "black",
-                color: "#fff",
-                padding: "10px 15px",
-                borderRadius: "8px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Logout
-            </button>
+            <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
           </div>
         </header>
 
@@ -1000,7 +1221,7 @@ const handleSend = async () => {
                         components={{
                           code({ inline, className, children, ...props }) {
                             const match = /language-(\w+)/.exec(
-                              className || ""
+                              className || "",
                             );
                             if (!inline && match) {
                               const copyId = `${
@@ -1014,7 +1235,7 @@ const handleSend = async () => {
                                     onClick={() =>
                                       handleCopy(
                                         String(children).trim(),
-                                        copyId
+                                        copyId,
                                       )
                                     }
                                   >
