@@ -37,6 +37,7 @@ function ChatBoard() {
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [userName, setUserName] = useState("User");
   const [selectedModel, setSelectedModel] = useState(
     "meta-llama-3.1-8b-instruct"
   );
@@ -46,8 +47,18 @@ function ChatBoard() {
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated"); // ❌ Remove login session
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("authProvider");
     navigate("/"); // 🔄 Redirect to Login page
   };
+
+  useEffect(() => {
+    const storedName = localStorage.getItem("userName");
+    if (storedName) {
+      setUserName(storedName);
+    }
+  }, []);
 
   // === VOICE: new state + ref (added, doesn't remove any existing code) ===
   const [listening, setListening] = useState(false);
@@ -874,23 +885,41 @@ const handleSend = async () => {
       >
         <header
           className="header"
-          style={{ textAlign: "center", padding: "1rem" }}
+          style={{ padding: "1rem" }}
         >
-          <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
-          <button 
-        onClick={handleLogout}
-        style={{
-          background: "black",
-          color: "#fff",
-          padding: "10px 15px",
-          borderRadius: "8px",
-          border: "none",
-          cursor: "pointer",
-          float: "right",
-        }}
-      >
-        Logout
-      </button>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <span style={{ fontSize: "0.85rem", color: "#555", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Login ID
+                </span>
+                <span style={{ fontSize: "1rem", fontWeight: 700, color: "#111" }}>
+                  {userName || "Unknown user"}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "black",
+                color: "#fff",
+                padding: "10px 15px",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         <div
