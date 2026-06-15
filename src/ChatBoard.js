@@ -47,6 +47,7 @@ function ChatBoard() {
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
   const userMenuRef = useRef(null);
+  const footerMenuRef = useRef(null);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated"); // ❌ Remove login session
@@ -581,6 +582,23 @@ function ChatBoard() {
       }
     }
   };
+  
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (
+      footerMenuRef.current &&
+      !footerMenuRef.current.contains(event.target)
+    ) {
+      setShowFooterMenu(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   // --- JSX ---
   return (
@@ -815,6 +833,7 @@ function ChatBoard() {
 
               {showFooterMenu && (
                 <div
+                 ref={footerMenuRef}
                   style={{
                     position: "absolute",
                     bottom: "100%",
@@ -1118,6 +1137,7 @@ function ChatBoard() {
               paddingTop: "12px",
               zIndex: 2,
               gap: "10px",
+              cursor: "pointer",
             }}
           >
             <span
@@ -1142,6 +1162,7 @@ function ChatBoard() {
             </span>
              {showFooterMenu && (
                 <div
+                 ref={footerMenuRef}
                   style={{
                     position: "absolute",
                     bottom: "100%",
