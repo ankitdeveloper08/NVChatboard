@@ -18,6 +18,7 @@ import profiles from "./profile.json";
 import "./App.css";
 import SearchModal from "./SearchModal";
 import ProfileModal from "./ProfileModal";
+import FooterMenu from "./FooterMenu";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -832,168 +833,6 @@ function ChatBoard() {
               >
                 {userName ? userName.charAt(0).toUpperCase() : "U"}
               </span>
-
-              {showFooterMenu && (
-                <div
-                  ref={footerMenuRef}
-                  style={{
-                    position: "absolute",
-                    bottom: "100%",
-                    left: 0,
-                    right: 0,
-                    marginBottom: "10px",
-                    backgroundColor: "#fff",
-                    border: "1px solid #e5e5e5",
-                    borderRadius: "20px",
-                    boxShadow: "0 18px 50px rgba(15, 23, 42, 0.18)",
-                    width: "100%",
-                    zIndex: 1000,
-                    overflow: "hidden",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div
-                    style={{
-                      padding: "1rem 1rem 0.75rem 1rem",
-                      borderBottom: "1px solid #e5e5e5",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.75rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "42px",
-                          height: "42px",
-                          borderRadius: "50%",
-                          backgroundColor: "#10a37f",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#fff",
-                          fontWeight: 700,
-                          fontSize: "1rem",
-                        }}
-                      >
-                        {userName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "1rem",
-                            fontWeight: 700,
-                            color: "#111",
-                          }}
-                        >
-                          {userName}
-                        </p>
-                        <p
-                          style={{
-                            margin: "4px 0 0 0",
-                            fontSize: "0.82rem",
-                            color: "#6b7280",
-                          }}
-                        >
-                          Free
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ padding: "0.75rem 0" }}>
-                    <button
-                      onClick={() => setShowFooterMenu(false)}
-                      style={menuItemStyle}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.background = "#f5f5f5")
-                      }
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.background = "none")
-                      }
-                    >
-                      <span>⭐</span> Upgrade plan
-                    </button>
-                    <button
-                      onClick={() => setShowFooterMenu(false)}
-                      style={menuItemStyle}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.background = "#f5f5f5")
-                      }
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.background = "none")
-                      }
-                    >
-                      <span>✨</span> Personalization
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowFooterMenu(false);
-                        setShowProfileModal(true);
-                      }}
-                      style={menuItemStyle}
-                    >
-                      <span>👤</span> Profile
-                    </button>
-                    <button
-                      onClick={() => setShowFooterMenu(false)}
-                      style={menuItemStyle}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.background = "#f5f5f5")
-                      }
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.background = "none")
-                      }
-                    >
-                      <span>⚙️</span> Settings
-                    </button>
-                    <button
-                      onClick={() => setShowFooterMenu(false)}
-                      style={menuItemStyle}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.background = "#f5f5f5")
-                      }
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.background = "none")
-                      }
-                    >
-                      <span>❓</span> Help
-                    </button>
-                  </div>
-                  <div
-                    style={{
-                      padding: "0.75rem 1rem 1rem 1rem",
-                      borderTop: "1px solid #e5e5e5",
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <button
-                      onClick={() => {
-                        setShowFooterMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        padding: "0 20px",
-                        backgroundColor: "#202123",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        fontSize: "1rem",
-                        fontWeight: 500,
-                        height: "40px",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span>🚪</span> Log out
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -1159,168 +998,6 @@ function ChatBoard() {
             >
               {userName ? userName.charAt(0).toUpperCase() : "U"}
             </span>
-            {showFooterMenu && (
-              <div
-                ref={footerMenuRef}
-                style={{
-                  position: "absolute",
-                  bottom: "100%",
-                  margin: "12px",
-                  left: 0,
-                  // right: 0,
-                  marginBottom: "10px",
-                  backgroundColor: "#fff",
-                  border: "1px solid #e5e5e5",
-                  borderRadius: "20px",
-                  boxShadow: "0 18px 50px rgba(15, 23, 42, 0.18)",
-                  width: "230px",
-                  zIndex: 1000,
-                  overflow: "hidden",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div
-                  style={{
-                    padding: "1rem 1rem 0.75rem 1rem",
-                    borderBottom: "1px solid #e5e5e5",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.75rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "42px",
-                        height: "42px",
-                        borderRadius: "50%",
-                        backgroundColor: "#10a37f",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#fff",
-                        fontWeight: 700,
-                        fontSize: "1rem",
-                      }}
-                    >
-                      {userName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "1rem",
-                          fontWeight: 700,
-                          color: "#111",
-                        }}
-                      >
-                        {userName}
-                      </p>
-                      <p
-                        style={{
-                          margin: "4px 0 0 0",
-                          fontSize: "0.82rem",
-                          color: "#6b7280",
-                        }}
-                      >
-                        Free
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ padding: "0.75rem 0" }}>
-                  <button
-                    onClick={() => setShowFooterMenu(false)}
-                    style={menuItemStyle}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.background = "#f5f5f5")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.background = "none")
-                    }
-                  >
-                    <span>⭐</span> Upgrade plan
-                  </button>
-                  <button
-                    onClick={() => setShowFooterMenu(false)}
-                    style={menuItemStyle}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.background = "#f5f5f5")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.background = "none")
-                    }
-                  >
-                    <span>✨</span> Personalization
-                  </button>
-                  <button
-                      onClick={() => {
-                        setShowFooterMenu(false);
-                        setShowProfileModal(true);
-                      }}
-                      style={menuItemStyle}
-                    >
-                      <span>👤</span> Profile
-                    </button>
-                  <button
-                    onClick={() => setShowFooterMenu(false)}
-                    style={menuItemStyle}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.background = "#f5f5f5")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.background = "none")
-                    }
-                  >
-                    <span>⚙️</span> Settings
-                  </button>
-                  <button
-                    onClick={() => setShowFooterMenu(false)}
-                    style={menuItemStyle}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.background = "#f5f5f5")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.background = "none")
-                    }
-                  >
-                    <span>❓</span> Help
-                  </button>
-                </div>
-                <div
-                  style={{
-                    padding: "0.75rem 1rem 1rem 1rem",
-                    borderTop: "1px solid #e5e5e5",
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      setShowFooterMenu(false);
-                      handleLogout();
-                    }}
-                    style={{
-                      padding: "0 20px",
-                      backgroundColor: "#202123",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontSize: "1rem",
-                      fontWeight: 500,
-                      height: "40px",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span>🚪</span> Log out
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1719,6 +1396,16 @@ function ChatBoard() {
         userName={userName}
         userEmail={localStorage.getItem("userEmail") || ""}
         userPicture=""
+      />
+      <FooterMenu
+        userName={userName}
+        showFooterMenu={showFooterMenu}
+        footerMenuRef={footerMenuRef}
+        menuItemStyle={menuItemStyle}
+        setShowFooterMenu={setShowFooterMenu}
+        setShowProfileModal={setShowProfileModal}
+        handleLogout={handleLogout}
+        width="100%"
       />
     </div>
   );
