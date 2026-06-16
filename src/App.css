@@ -574,4 +574,23 @@ button[disabled] {
 .message.assistant * + * {
   margin-top: 1px !important;
 }
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+}
+
+.profile-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
 
