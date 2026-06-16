@@ -11,6 +11,13 @@ const FooterMenu = ({
 }) => {
   if (!showFooterMenu) return null;
 
+  const disabledMenuStyle = {
+    ...menuItemStyle,
+    opacity: 0.5,
+    cursor: "not-allowed",
+    pointerEvents: "none",
+  };
+
   return (
     <div
       ref={footerMenuRef}
@@ -24,6 +31,7 @@ const FooterMenu = ({
         boxShadow: "0 18px 50px rgba(15, 23, 42, 0.18)",
         width: "230px",
         zIndex: 99999,
+        overflow: "hidden",
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -81,11 +89,11 @@ const FooterMenu = ({
 
       {/* Menu Items */}
       <div style={{ padding: "0.75rem 0" }}>
-        <button onClick={() => setShowFooterMenu(false)} style={menuItemStyle}>
+        <button disabled style={disabledMenuStyle}>
           ⭐ Upgrade Plan
         </button>
 
-        <button onClick={() => setShowFooterMenu(false)} style={menuItemStyle}>
+        <button disabled style={disabledMenuStyle}>
           ✨ Personalization
         </button>
 
@@ -99,11 +107,11 @@ const FooterMenu = ({
           👤 Profile
         </button>
 
-        <button onClick={() => setShowFooterMenu(false)} style={menuItemStyle}>
+        <button disabled style={disabledMenuStyle}>
           ⚙️ Settings
         </button>
 
-        <button onClick={() => setShowFooterMenu(false)} style={menuItemStyle}>
+        <button disabled style={disabledMenuStyle}>
           ❓ Help
         </button>
       </div>
