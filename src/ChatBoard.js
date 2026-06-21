@@ -24,6 +24,7 @@ SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
 
 function ChatBoard() {
+  const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const sessionsRef = useRef(sessions); // <-- new
@@ -53,19 +54,30 @@ function ChatBoard() {
   const footerMenuRef = useRef(null);
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated"); // ❌ Remove login session
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("token");
     localStorage.removeItem("userName");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("authProvider");
-    navigate("/"); // 🔄 Redirect to Login page
+    localStorage.removeItem("activeSessionId");
+
+    navigate("/");
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      navigate("/", { replace: true });
+      return;
+    }
+
     const storedName = localStorage.getItem("userName");
+
     if (storedName) {
       setUserName(storedName);
     }
-  }, []);
+  }, [navigate]);
 
   // === VOICE: new state + ref (added, doesn't remove any existing code) ===
   const [listening, setListening] = useState(false);
@@ -220,39 +232,89 @@ function ChatBoard() {
     }
   };
 
+  const loadChats = async () => {
+    try {
+      const response = await fetch("https://openaiserver-e9lo.onrender.com/api/chats", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const chats = await response.json();
+
+      const formattedChats = chats.map((chat) => ({
+        id: chat.id,
+        title: chat.title,
+        messages:
+          chat.messages?.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+          })) || [],
+      }));
+      setSessions(formattedChats);
+
+      // RESTORE LAST OPEN CHAT
+      const savedChatId = localStorage.getItem("activeSessionId");
+
+      if (savedChatId && formattedChats.some((c) => c.id === savedChatId)) {
+        setActiveSessionId(savedChatId);
+        openChat(savedChatId);
+      } else if (formattedChats.length > 0) {
+        setActiveSessionId(formattedChats[0].id);
+        openChat(formattedChats[0].id);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
   // Load stored chats
   useEffect(() => {
-    const stored = localStorage.getItem("chatSessions");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Ensure each message has a stable id so copy buttons can target a specific block
-      const withIds = parsed.map((sess) => ({
-        ...sess,
-        messages: (sess.messages || []).map((m) =>
-          m.id
-            ? m
-            : {
-                ...m,
-                id: `msg-${Date.now()}-${Math.random()
-                  .toString(36)
-                  .slice(2, 8)}`,
-              },
-        ),
-      }));
-      setSessions(withIds);
-      if (withIds.length > 0) setActiveSessionId(withIds[0].id);
-    }
+    loadChats();
   }, []);
+  const openChat = async (chatId) => {
+    localStorage.setItem("activeSessionId", chatId);
+    try {
+      const response = await fetch(
+        `https://openaiserver-e9lo.onrender.com/api/chats/${chatId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load chat");
+      }
+
+      const chat = await response.json();
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === chatId
+            ? {
+                ...s,
+                messages: chat.messages.map((m) => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                })),
+              }
+            : s,
+        ),
+      );
+
+      setActiveSessionId(chatId);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   // Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions, activeSessionId]);
-
-  // Persist chats
-  useEffect(() => {
-    localStorage.setItem("chatSessions", JSON.stringify(sessions));
-  }, [sessions]);
 
   // ensure textarea height matches content when input or active session changes
   useEffect(() => {
@@ -261,46 +323,88 @@ function ChatBoard() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
 
-  const createNewChat = () => {
-    const newChat = {
-      id: `chat-${Date.now()}`,
-      title: "New Conversation",
-      messages: [],
-    };
-    setSessions((prev) => [newChat, ...prev]);
-    setActiveSessionId(newChat.id);
-    // clear and adjust input
-    setInput("");
-    // adjust after DOM update
-    setTimeout(() => adjustTextareaHeight(), 0);
-  };
+  const createNewChat = async () => {
+    try {
+      const response = await fetch("https://openaiserver-e9lo.onrender.com/api/chats", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-  // Create a new chat from a suggestion and optionally send immediately
-  const handleSuggestion = (text, sendImmediately = true) => {
-    const newChat = {
-      id: `chat-${Date.now()}`,
-      title: text.length > 30 ? text.slice(0, 30) : text,
-      messages: [],
-    };
-    setSessions((prev) => [newChat, ...prev]);
-    setActiveSessionId(newChat.id);
-    setInput(text);
-    // adjust after DOM update
-    setTimeout(() => adjustTextareaHeight(), 0);
-    if (sendImmediately) {
-      // allow state to settle so activeSession is available in handleSend
-      setTimeout(() => {
-        handleSend();
-      }, 50);
+      if (!response.ok) {
+        throw new Error("Failed to create chat");
+      }
+
+      const chat = await response.json(); // ✅ THIS MUST EXIST
+
+      const newChat = {
+        id: chat.id,
+        title: chat.title,
+        messages: [],
+      };
+
+      setSessions((prev) => [newChat, ...prev]);
+
+      setActiveSessionId(chat.id); // ✅ use chat.id (NOT undefined)
+      localStorage.setItem("activeSessionId", chat.id); // optional but recommended
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const deleteChat = (id) => {
-    const filtered = sessions.filter((s) => s.id !== id);
-    setSessions(filtered);
-    if (id === activeSessionId && filtered.length > 0)
-      setActiveSessionId(filtered[0].id);
-    else if (filtered.length === 0) setActiveSessionId(null);
+  // Create a new chat from a suggestion and optionally send immediately
+  const handleSuggestion = async (text) => {
+    try {
+      const response = await fetch("https://openaiserver-e9lo.onrender.com/api/chats", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const chat = await response.json();
+
+      const newChat = {
+        id: chat.id,
+        title: chat.title,
+        messages: [],
+      };
+
+      setSessions((prev) => [newChat, ...prev]);
+      setActiveSessionId(chat.id);
+
+      setInput(text);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const deleteChat = async (id) => {
+    try {
+      const res = await fetch(`https://openaiserver-e9lo.onrender.com/api/chats/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "Delete failed");
+      }
+
+      const filtered = sessions.filter((s) => s.id !== id);
+      setSessions(filtered);
+
+      if (id === activeSessionId && filtered.length > 0) {
+        setActiveSessionId(filtered[0].id);
+      } else if (filtered.length === 0) {
+        setActiveSessionId(null);
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
 
   const handleConfirmDelete = (id) => {
@@ -309,8 +413,30 @@ function ChatBoard() {
     setDeleteTargetId(null);
   };
 
-  const renameChat = (id, title) => {
-    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
+  const renameChat = async (id, title) => {
+    try {
+      const response = await fetch(
+        `https://openaiserver-e9lo.onrender.com/api/chats/${id}/rename`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to rename chat");
+      }
+
+      setSessions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, title } : s)),
+      );
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleStop = () => {
@@ -321,14 +447,38 @@ function ChatBoard() {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || !activeSessionId) return;
+  const saveMessageToDB = async (chatId, role, content) => {
+    await fetch("https://openaiserver-e9lo.onrender.com/api/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        chatId,
+        role,
+        content,
+      }),
+    });
+  };
 
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    let fullText = "";
+
+    let chatId = activeSessionId;
+
+    const uid = crypto.randomUUID();
     const userMessage = {
-      id: `msg-${Date.now()}`,
+      id: uid,
       role: "user",
       content: input,
     };
+    if (!activeSessionId) {
+      alert("Please create a chat first");
+      return;
+    }
+    await saveMessageToDB(activeSessionId, "user", input);
 
     // 🧠 Add user message
     setSessions((prev) =>
@@ -336,8 +486,7 @@ function ChatBoard() {
         s.id === activeSessionId
           ? {
               ...s,
-              title:
-                s.title === "New Conversation" ? input.slice(0, 30) : s.title,
+              title: s.messages.length === 0 ? input.slice(0, 30) : s.title,
               messages: [...(s.messages || []), userMessage],
             }
           : s,
@@ -365,15 +514,15 @@ function ChatBoard() {
       controllerRef.current = new AbortController();
       console.log("📘 Asking /ask-docs (stream)...");
 
-      const response = await fetch(
-        "https://openaiservers.onrender.com/ask-docs",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: input }),
-          signal: controllerRef.current.signal,
+      const response = await fetch("https://openaiserver-e9lo.onrender.com/ask-docs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ question: input }),
+        signal: controllerRef.current.signal,
+      });
 
       if (!response.ok)
         throw new Error(`HTTP ${response.status} - ${response.statusText}`);
@@ -381,7 +530,6 @@ function ChatBoard() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
-      let fullText = "";
       let gotAnswerFromDocs = false;
 
       // 🔁 Read streaming chunks
@@ -470,18 +618,18 @@ function ChatBoard() {
           { role: "user", content: input },
         ];
 
-        const aiRes = await fetch(
-          "https://openaiservers.onrender.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: formattedMessages,
-            }),
-            signal: controllerRef.current?.signal,
+        const aiRes = await fetch("https://openaiserver-e9lo.onrender.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-        );
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: formattedMessages,
+          }),
+          signal: controllerRef.current?.signal,
+        });
 
         if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
 
@@ -530,6 +678,9 @@ function ChatBoard() {
           }
         }
         console.log("✅ OpenAI response done.");
+        if (openAiText.trim()) {
+          await saveMessageToDB(activeSessionId, "assistant", openAiText);
+        }
       } else {
         console.log(
           "ℹ️ Skipping fallback — docs provided a sufficient answer.",
@@ -563,6 +714,9 @@ function ChatBoard() {
         ),
       );
     } finally {
+      if (fullText.trim()) {
+        await saveMessageToDB(activeSessionId, "assistant", fullText);
+      }
       setLoading(false);
     }
   };
@@ -692,7 +846,7 @@ function ChatBoard() {
                     />
                   ) : (
                     <div
-                      onClick={() => setActiveSessionId(s.id)}
+                      onClick={() => openChat(s.id)}
                       style={{ cursor: "pointer" }}
                     >
                       {s.title.length > 20 ? s.title.slice(0, 20) : s.title}
@@ -753,23 +907,43 @@ function ChatBoard() {
                     </div>
                     <button
                       className="session-menu-item"
-                      onClick={() => {
-                        // Duplicate session
-                        const copy = {
-                          ...s,
-                          id: `chat-${Date.now()}-${Math.random()
-                            .toString(36)
-                            .slice(2, 6)}`,
-                          title: `${s.title} (copy)`,
-                          messages: (s.messages || []).map((m) => ({
-                            ...m,
-                            id: `msg-${Date.now()}-${Math.random()
-                              .toString(36)
-                              .slice(2, 6)}`,
-                          })),
-                        };
-                        setSessions((prev) => [copy, ...prev]);
-                        setOpenMenuId(null);
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(
+                            `https://openaiserver-e9lo.onrender.com/api/chats/${s.id}/duplicate`,
+                            {
+                              method: "POST",
+                              headers: {
+                                Authorization: `Bearer ${token}`,
+                              },
+                            },
+                          );
+
+                          if (!response.ok) {
+                            throw new Error("Failed to duplicate chat");
+                          }
+
+                          const duplicatedChat = await response.json();
+
+                          const formattedChat = {
+                            id: duplicatedChat.id,
+                            title: duplicatedChat.title,
+                            messages:
+                              duplicatedChat.messages?.map((m) => ({
+                                id: m.id,
+                                role: m.role,
+                                content: m.content,
+                              })) || [],
+                          };
+
+                          setSessions((prev) => [formattedChat, ...prev]);
+
+                          setActiveSessionId(formattedChat.id);
+
+                          setOpenMenuId(null);
+                        } catch (error) {
+                          console.error(error);
+                        }
                       }}
                     >
                       Duplicate
