@@ -61,6 +61,7 @@ function ChatBoard() {
   const [showFooterMenu, setShowFooterMenu] = useState(false);
   const [openMoreMenuId, setOpenMoreMenuId] = useState(null);
   const [readingId, setReadingId] = useState(null);
+  const [pendingChat, setPendingChat] = useState(false);
   const moreMenuRef = useRef(null);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
@@ -271,7 +272,10 @@ function ChatBoard() {
       // RESTORE LAST OPEN CHAT
       const savedChatId = localStorage.getItem("activeSessionId");
 
-      if (savedChatId && formattedChats.some((c) => c.id === savedChatId)) {
+      if (
+        savedChatId &&
+        formattedChats.some((c) => String(c.id) === String(savedChatId))
+      ) {
         setActiveSessionId(savedChatId);
         openChat(savedChatId);
       } else if (formattedChats.length > 0) {
@@ -286,41 +290,48 @@ function ChatBoard() {
   useEffect(() => {
     loadChats();
   }, []);
-  const openChat = async (chatId) => {
-    localStorage.setItem("activeSessionId", chatId);
-    try {
-      const response = await fetch(`${API_URL}/api/chats/${chatId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+const openChat = async (chatId) => {
+  setPendingChat(false);
+  setIsNewConversationMode(false);
 
-      if (!response.ok) {
-        throw new Error("Failed to load chat");
-      }
+  setActiveSessionId(String(chatId));
+  localStorage.setItem("activeSessionId", String(chatId));
 
-      const chat = await response.json();
+  const existingChat = sessions.find(
+    (s) => String(s.id) === String(chatId)
+  );
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === chatId
-            ? {
-                ...s,
-                messages: chat.messages.map((m) => ({
-                  id: m.id,
-                  role: m.role,
-                  content: m.content,
-                })),
-              }
-            : s,
-        ),
-      );
+  if (existingChat?.messages?.length > 0) {
+    return; // show instantly
+  }
 
-      setActiveSessionId(chatId);
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  try {
+    const response = await fetch(`${API_URL}/api/chats/${chatId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const chat = await response.json();
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === chatId
+          ? {
+              ...s,
+              messages: chat.messages.map((m) => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+              })),
+            }
+          : s
+      )
+    );
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   // Scroll to bottom
   useEffect(() => {
@@ -332,64 +343,23 @@ function ChatBoard() {
     adjustTextareaHeight();
   }, [input, activeSessionId, isSidebarCollapsed]);
 
-  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const activeSession = sessions.find(
+    (s) => String(s.id) === String(activeSessionId),
+  );
 
-  const createNewChat = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/chats`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const createNewChat = () => {
+    setActiveSessionId(null);
+    setInput("");
+    setPendingChat(true);
+    setIsNewConversationMode(true);
 
-      if (!response.ok) {
-        throw new Error("Failed to create chat");
-      }
-
-      const chat = await response.json(); // ✅ THIS MUST EXIST
-
-      const newChat = {
-        id: chat.id,
-        title: chat.title,
-        messages: [],
-      };
-
-      setSessions((prev) => [newChat, ...prev]);
-
-      setActiveSessionId(chat.id); // ✅ use chat.id (NOT undefined)
-      setIsNewConversationMode(true);
-      localStorage.setItem("activeSessionId", chat.id); // optional but recommended
-    } catch (error) {
-      console.error(error);
-    }
+    localStorage.removeItem("activeSessionId");
   };
-
   // Create a new chat from a suggestion and optionally send immediately
-  const handleSuggestion = async (text) => {
-    try {
-      const response = await fetch(`${API_URL}/api/chats`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const chat = await response.json();
-
-      const newChat = {
-        id: chat.id,
-        title: chat.title,
-        messages: [],
-      };
-
-      setSessions((prev) => [newChat, ...prev]);
-      setActiveSessionId(chat.id);
-
-      setInput(text);
-    } catch (error) {
-      console.error(error);
-    }
+  const handleSuggestion = (text) => {
+    setPendingChat(true);
+    setIsNewConversationMode(true);
+    setInput(text);
   };
 
   const deleteChat = async (id) => {
@@ -476,24 +446,54 @@ function ChatBoard() {
     setIsNewConversationMode(false);
     let fullText = "";
 
-    let chatId = activeSessionId;
-
     const uid = crypto.randomUUID();
     const userMessage = {
       id: uid,
       role: "user",
       content: input,
     };
-    if (!activeSessionId) {
-      alert("Please create a chat first");
-      return;
+    let chatId = activeSessionId;
+
+    if (pendingChat || !chatId) {
+      try {
+        const response = await fetch(`${API_URL}/api/chats`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create chat");
+        }
+
+        const chat = await response.json();
+
+        const newChat = {
+          id: chat.id,
+          title: input.slice(0, 30),
+          messages: [],
+        };
+
+        setSessions((prev) => [newChat, ...prev]);
+
+        setActiveSessionId(String(chat.id));
+        localStorage.setItem("activeSessionId", String(chat.id));
+
+        chatId = chat.id;
+
+        setPendingChat(false);
+      } catch (err) {
+        console.error(err);
+        return;
+      }
     }
-    await saveMessageToDB(activeSessionId, "user", input);
+    await saveMessageToDB(chatId, "user", input);
 
     // 🧠 Add user message
     setSessions((prev) =>
       prev.map((s) =>
-        s.id === activeSessionId
+        s.id === chatId
           ? {
               ...s,
               title: s.messages.length === 0 ? input.slice(0, 30) : s.title,
@@ -514,7 +514,7 @@ function ChatBoard() {
 
     setSessions((prev) =>
       prev.map((s) =>
-        s.id === activeSessionId
+        s.id === chatId
           ? { ...s, messages: [...(s.messages || []), assistantMessage] }
           : s,
       ),
@@ -570,7 +570,7 @@ function ChatBoard() {
               // 🔄 Live update UI
               setSessions((prev) =>
                 prev.map((s) =>
-                  s.id === activeSessionId
+                  s.id === chatId
                     ? {
                         ...s,
                         messages: s.messages.map((m) =>
@@ -669,7 +669,7 @@ function ChatBoard() {
                 // Live update assistant message with the OpenAI stream
                 setSessions((prev) =>
                   prev.map((s) =>
-                    s.id === activeSessionId
+                    s.id === chatId
                       ? {
                           ...s,
                           messages: s.messages.map((m) =>
@@ -708,7 +708,7 @@ function ChatBoard() {
       console.error("❌ Error during chat:", err);
       setSessions((prev) =>
         prev.map((s) =>
-          s.id === activeSessionId
+          s.id === chatId
             ? {
                 ...s,
                 messages: [
@@ -725,7 +725,7 @@ function ChatBoard() {
       );
     } finally {
       if (fullText.trim()) {
-        await saveMessageToDB(activeSessionId, "assistant", fullText);
+        await saveMessageToDB(chatId, "assistant", fullText);
       }
       setLoading(false);
     }
@@ -924,7 +924,7 @@ function ChatBoard() {
             justifyContent: activeSession ? "flex-start" : "center",
           }}
         >
-          {!activeSession ? (
+          {!activeSession && !pendingChat ? (
             <div className="empty-chat">
               <div className="empty-chat-content">
                 <h2>Hi there 👋</h2>
@@ -973,9 +973,10 @@ function ChatBoard() {
                 </div>
               </div>
             </div>
-          ) : isNewConversationMode &&
-            activeSession &&
-            activeSession.messages.length === 0 ? (
+          ) : pendingChat ||
+            (isNewConversationMode &&
+              activeSession &&
+              activeSession.messages.length === 0) ? (
             <>
               <div
                 style={{
