@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import "./Login.css";
 
 const API_URL = "https://openaiserver-e9lo.onrender.com/api/auth";
 
@@ -13,6 +14,7 @@ const Login = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
@@ -47,15 +49,21 @@ const Login = () => {
 
   const handleGoogleCredentialResponse = async (response) => {
     try {
-      const res = await fetch("https://openaiserver-e9lo.onrender.com/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      setGoogleLoading(true);
+      setError("");
+
+      const res = await fetch(
+        "https://openaiserver-e9lo.onrender.com/api/auth/google",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            credential: response.credential,
+          }),
         },
-        body: JSON.stringify({
-          credential: response.credential,
-        }),
-      });
+      );
 
       const data = await res.json();
 
@@ -72,6 +80,8 @@ const Login = () => {
       navigate("/chat", { replace: true });
     } catch (error) {
       setError(error.message);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -371,6 +381,27 @@ const Login = () => {
           }}
         />
       </div>
+
+      {googleLoading && (
+        <div className="google-loader-overlay">
+          <div className="google-loader-card">
+            <img
+              src="/NVlogo.jpg"
+              alt="NewVision"
+              className="google-loader-logo"
+            />
+
+            <div className="google-loader-spinner" />
+
+            <h3 className="google-loader-title">Signing you in</h3>
+
+            <p className="google-loader-text">
+              Authenticating with Google
+              <span className="loading-dots"></span>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
