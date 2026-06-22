@@ -56,6 +56,9 @@ function ChatBoard() {
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showFooterMenu, setShowFooterMenu] = useState(false);
+  const [openMoreMenuId, setOpenMoreMenuId] = useState(null);
+  const [readingId, setReadingId] = useState(null);
+  const moreMenuRef = useRef(null);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
   const userMenuRef = useRef(null);
@@ -766,13 +769,76 @@ function ChatBoard() {
     }
   };
 
+  const handleReadAloud = (text, messageId) => {
+    window.speechSynthesis.cancel();
+
+    let cleanText = text;
+
+    // Detect if any code exists
+    const hasCode =
+      /```[\s\S]*?```/.test(cleanText) || /`[^`]*`/.test(cleanText);
+
+    // Remove all code blocks
+    cleanText = cleanText.replace(/```[\s\S]*?```/g, " ");
+
+    // Remove inline code
+    cleanText = cleanText.replace(/`[^`]*`/g, " ");
+
+    // Add code notice only once
+    if (hasCode) {
+      cleanText +=
+        " This response contains code. Please see the code in our conversation history.";
+    }
+
+    // Remove URLs
+    cleanText = cleanText.replace(/https?:\/\/[^\s]+/g, "");
+
+    // Remove markdown symbols
+    cleanText = cleanText.replace(/[#>*_\-\[\]()]/g, " ");
+
+    // Remove unwanted punctuation
+    cleanText = cleanText.replace(/[;:'"`]/g, "");
+
+    // Clean extra spaces
+    cleanText = cleanText.replace(/\s+/g, " ").trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    utterance.onend = () => {
+      setReadingId(null);
+    };
+
+    setReadingId(messageId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopReading = () => {
+    window.speechSynthesis.cancel();
+    setReadingId(null);
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setOpenMoreMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        footerMenuRef.current &&
-        !footerMenuRef.current.contains(event.target)
-      ) {
-        setShowFooterMenu(false);
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setOpenMoreMenuId(null);
       }
     };
 
@@ -1430,9 +1496,48 @@ function ChatBoard() {
                           </button>
 
                           {/* More */}
-                          <button className="message-action-btn" title="More">
-                            ⋯
-                          </button>
+                          <div
+                            ref={openMoreMenuId === msg.id ? moreMenuRef : null}
+                            style={{ position: "relative" }}
+                          >
+                            <button
+                              className="message-action-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+
+                                setOpenMoreMenuId(
+                                  openMoreMenuId === msg.id ? null : msg.id,
+                                );
+                              }}
+                            >
+                              <BsThreeDots />
+                            </button>
+
+                            {openMoreMenuId === msg.id && (
+                              <div
+                                className="message-more-menu"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {readingId === msg.id ? (
+                                  <button
+                                    className="message-more-item"
+                                    onClick={stopReading}
+                                  >
+                                    ⏹ Stop Reading
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="message-more-item"
+                                    onClick={() =>
+                                      handleReadAloud(msg.content, msg.id)
+                                    }
+                                  >
+                                    🔊 Read Aloud
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </>
                     ) : (
