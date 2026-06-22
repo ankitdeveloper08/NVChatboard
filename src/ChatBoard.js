@@ -10,7 +10,15 @@ import {
   FaSearch,
   FaStop,
   FaPaperPlane,
+  FaRegCopy,
+  FaThumbsUp,
+  FaThumbsDown,
+  FaShare,
+  FaRedo,
+  FaCheck,
 } from "react-icons/fa";
+
+import { BsThreeDots } from "react-icons/bs";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
@@ -234,11 +242,14 @@ function ChatBoard() {
 
   const loadChats = async () => {
     try {
-      const response = await fetch("https://openaiserver-e9lo.onrender.com/api/chats", {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        "https://openaiserver-e9lo.onrender.com/api/chats",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       const chats = await response.json();
 
@@ -325,12 +336,15 @@ function ChatBoard() {
 
   const createNewChat = async () => {
     try {
-      const response = await fetch("https://openaiserver-e9lo.onrender.com/api/chats", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        "https://openaiserver-e9lo.onrender.com/api/chats",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to create chat");
@@ -356,12 +370,15 @@ function ChatBoard() {
   // Create a new chat from a suggestion and optionally send immediately
   const handleSuggestion = async (text) => {
     try {
-      const response = await fetch("https://openaiserver-e9lo.onrender.com/api/chats", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        "https://openaiserver-e9lo.onrender.com/api/chats",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       const chat = await response.json();
 
@@ -382,12 +399,15 @@ function ChatBoard() {
 
   const deleteChat = async (id) => {
     try {
-      const res = await fetch(`https://openaiserver-e9lo.onrender.com/api/chats/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `https://openaiserver-e9lo.onrender.com/api/chats/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!res.ok) {
         const errText = await res.text();
@@ -514,15 +534,18 @@ function ChatBoard() {
       controllerRef.current = new AbortController();
       console.log("📘 Asking /ask-docs (stream)...");
 
-      const response = await fetch("https://openaiserver-e9lo.onrender.com/ask-docs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        "https://openaiserver-e9lo.onrender.com/ask-docs",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ question: input }),
+          signal: controllerRef.current.signal,
         },
-        body: JSON.stringify({ question: input }),
-        signal: controllerRef.current.signal,
-      });
+      );
 
       if (!response.ok)
         throw new Error(`HTTP ${response.status} - ${response.statusText}`);
@@ -618,18 +641,21 @@ function ChatBoard() {
           { role: "user", content: input },
         ];
 
-        const aiRes = await fetch("https://openaiserver-e9lo.onrender.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+        const aiRes = await fetch(
+          "https://openaiserver-e9lo.onrender.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-4o-mini",
+              messages: formattedMessages,
+            }),
+            signal: controllerRef.current?.signal,
           },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: formattedMessages,
-          }),
-          signal: controllerRef.current?.signal,
-        });
+        );
 
         if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
 
@@ -1281,60 +1307,134 @@ function ChatBoard() {
                     style={{ position: "relative", maxWidth: "80%" }}
                   >
                     {msg.role === "assistant" ? (
-                      <ReactMarkdown
-                        children={msg.content}
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          code({ inline, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(
-                              className || "",
-                            );
-                            if (!inline && match) {
-                              const copyId = `${
-                                msg.id || i
-                              }-${codeBlockCounter}`;
-                              codeBlockCounter += 1;
-                              return (
-                                <div style={{ position: "relative" }}>
-                                  <button
-                                    className="copy-btn"
-                                    onClick={() =>
-                                      handleCopy(
-                                        String(children).trim(),
-                                        copyId,
-                                      )
-                                    }
-                                  >
-                                    {copiedId === copyId ? "Copied!" : "Copy"}
-                                  </button>
-                                  <SyntaxHighlighter
-                                    style={atomOneDark}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    {...props}
-                                  >
-                                    {String(children).replace(/\n$/, "")}
-                                  </SyntaxHighlighter>
-                                </div>
+                      <>
+                        <ReactMarkdown
+                          children={msg.content}
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code({ inline, className, children, ...props }) {
+                              const match = /language-(\w+)/.exec(
+                                className || "",
                               );
-                            }
-                            return (
-                              <code
-                                style={{
-                                  background: "#eee",
-                                  padding: "2px 5px",
-                                  borderRadius: "4px",
-                                  fontFamily: "monospace",
-                                  fontSize: "0.95em",
-                                }}
-                                {...props}
-                              >
-                                {children}
-                              </code>
-                            );
-                          },
-                        }}
-                      />
+
+                              if (!inline && match) {
+                                const copyId = `${msg.id || i}-${codeBlockCounter}`;
+                                codeBlockCounter += 1;
+
+                                return (
+                                  <div style={{ position: "relative" }}>
+                                    <button
+                                      className="copy-btn"
+                                      onClick={() =>
+                                        handleCopy(
+                                          String(children).trim(),
+                                          copyId,
+                                        )
+                                      }
+                                    >
+                                      {copiedId === copyId ? "Copied!" : "Copy"}
+                                    </button>
+
+                                    <SyntaxHighlighter
+                                      style={atomOneDark}
+                                      language={match[1]}
+                                      PreTag="div"
+                                      {...props}
+                                    >
+                                      {String(children).replace(/\n$/, "")}
+                                    </SyntaxHighlighter>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <code
+                                  style={{
+                                    background: "#eee",
+                                    padding: "2px 5px",
+                                    borderRadius: "4px",
+                                    fontFamily: "monospace",
+                                  }}
+                                  {...props}
+                                >
+                                  {children}
+                                </code>
+                              );
+                            },
+                          }}
+                        />
+
+                        {/* Action Bar */}
+                        <div
+                          className="message-actions"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            marginTop: "8px",
+                            color: "#666",
+                          }}
+                        >
+                          {/* Copy */}
+                          <button
+                            onClick={() => handleCopy(msg.content, msg.id)}
+                            className="message-action-btn"
+                            title="Copy"
+                          >
+                            {copiedId === msg.id ? <FaCheck /> : <FaRegCopy />}
+                          </button>
+
+                          {/* Like */}
+                          <button
+                            className="message-action-btn"
+                            title="Like"
+                            onClick={() => console.log("Liked")}
+                          >
+                            👍
+                          </button>
+
+                          {/* Dislike */}
+                          <button
+                            className="message-action-btn"
+                            title="Dislike"
+                            onClick={() => console.log("Disliked")}
+                          >
+                            👎
+                          </button>
+
+                          {/* Share */}
+                          <button
+                            className="message-action-btn"
+                            title="Share"
+                            onClick={() => {
+                              if (navigator.share) {
+                                navigator.share({
+                                  text: msg.content,
+                                });
+                              } else {
+                                navigator.clipboard.writeText(msg.content);
+                                alert("Message copied for sharing");
+                              }
+                            }}
+                          >
+                            ↗️
+                          </button>
+
+                          {/* Regenerate */}
+                          <button
+                            className="message-action-btn"
+                            title="Regenerate"
+                            onClick={() => handleSend()}
+                          >
+                            🔄
+                          </button>
+
+                          {/* More */}
+                          <button className="message-action-btn" title="More">
+                            ⋯
+                          </button>
+                        </div>
+                      </>
                     ) : (
                       msg.content
                     )}
