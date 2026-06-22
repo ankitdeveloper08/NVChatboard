@@ -1,5 +1,5 @@
 import React from "react";
-import "./ProfileModal.css";
+import "../../styles/ProfileModal.css";
 
 const ProfileModal = ({
   isOpen,

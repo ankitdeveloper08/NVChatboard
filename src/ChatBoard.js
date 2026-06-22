@@ -24,14 +24,16 @@ import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
 import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import profiles from "./profile.json";
 import "./App.css";
-import SearchModal from "./SearchModal";
-import ProfileModal from "./ProfileModal";
+import SearchModal from "./components/Modals/SearchModal";
+import ProfileModal from "././components/Modals/ProfileModal";
 import FooterMenu from "./FooterMenu";
+import Sidebar from "./components/Sidebar/Sidebar";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
 
 function ChatBoard() {
+  const API_URL = process.env.REACT_APP_RAG_API_URL;
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
@@ -49,6 +51,7 @@ function ChatBoard() {
   const [editingValue, setEditingValue] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userName, setUserName] = useState("User");
+  const [isNewConversationMode, setIsNewConversationMode] = useState(false);
   const [selectedModel, setSelectedModel] = useState(
     "meta-llama-3.1-8b-instruct",
   );
@@ -245,14 +248,11 @@ function ChatBoard() {
 
   const loadChats = async () => {
     try {
-      const response = await fetch(
-        "https://openaiserver-e9lo.onrender.com/api/chats",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/api/chats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       const chats = await response.json();
 
@@ -289,14 +289,11 @@ function ChatBoard() {
   const openChat = async (chatId) => {
     localStorage.setItem("activeSessionId", chatId);
     try {
-      const response = await fetch(
-        `https://openaiserver-e9lo.onrender.com/api/chats/${chatId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/api/chats/${chatId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!response.ok) {
         throw new Error("Failed to load chat");
@@ -339,15 +336,12 @@ function ChatBoard() {
 
   const createNewChat = async () => {
     try {
-      const response = await fetch(
-        "https://openaiserver-e9lo.onrender.com/api/chats",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/api/chats`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create chat");
@@ -364,6 +358,7 @@ function ChatBoard() {
       setSessions((prev) => [newChat, ...prev]);
 
       setActiveSessionId(chat.id); // ✅ use chat.id (NOT undefined)
+      setIsNewConversationMode(true);
       localStorage.setItem("activeSessionId", chat.id); // optional but recommended
     } catch (error) {
       console.error(error);
@@ -373,15 +368,12 @@ function ChatBoard() {
   // Create a new chat from a suggestion and optionally send immediately
   const handleSuggestion = async (text) => {
     try {
-      const response = await fetch(
-        "https://openaiserver-e9lo.onrender.com/api/chats",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/api/chats`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       const chat = await response.json();
 
@@ -402,15 +394,12 @@ function ChatBoard() {
 
   const deleteChat = async (id) => {
     try {
-      const res = await fetch(
-        `https://openaiserver-e9lo.onrender.com/api/chats/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const res = await fetch(`${API_URL}/api/chats/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!res.ok) {
         const errText = await res.text();
@@ -438,17 +427,14 @@ function ChatBoard() {
 
   const renameChat = async (id, title) => {
     try {
-      const response = await fetch(
-        `https://openaiserver-e9lo.onrender.com/api/chats/${id}/rename`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ title }),
+      const response = await fetch(`${API_URL}/api/chats/${id}/rename`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ title }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to rename chat");
@@ -471,7 +457,7 @@ function ChatBoard() {
   };
 
   const saveMessageToDB = async (chatId, role, content) => {
-    await fetch("https://openaiserver-e9lo.onrender.com/api/messages", {
+    await fetch(`${API_URL}/api/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -487,6 +473,7 @@ function ChatBoard() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
+    setIsNewConversationMode(false);
     let fullText = "";
 
     let chatId = activeSessionId;
@@ -537,18 +524,15 @@ function ChatBoard() {
       controllerRef.current = new AbortController();
       console.log("📘 Asking /ask-docs (stream)...");
 
-      const response = await fetch(
-        "https://openaiserver-e9lo.onrender.com/ask-docs",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ question: input }),
-          signal: controllerRef.current.signal,
+      const response = await fetch(`${API_URL}/ask-docs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ question: input }),
+        signal: controllerRef.current.signal,
+      });
 
       if (!response.ok)
         throw new Error(`HTTP ${response.status} - ${response.statusText}`);
@@ -644,21 +628,18 @@ function ChatBoard() {
           { role: "user", content: input },
         ];
 
-        const aiRes = await fetch(
-          "https://openaiserver-e9lo.onrender.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: formattedMessages,
-            }),
-            signal: controllerRef.current?.signal,
+        const aiRes = await fetch(`${API_URL}/v1/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-        );
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: formattedMessages,
+          }),
+          signal: controllerRef.current?.signal,
+        });
 
         if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
 
@@ -770,40 +751,37 @@ function ChatBoard() {
   };
 
   const cleanTextForSpeech = (text) => {
-  let cleaned = text;
+    let cleaned = text;
 
-  // Replace code blocks with a single natural sentence
-  cleaned = cleaned.replace(
-    /```[\s\S]*?```/g,
-    " The response includes a code example. Please refer to the chat for the complete code. "
-  );
+    // Replace code blocks with a single natural sentence
+    cleaned = cleaned.replace(
+      /```[\s\S]*?```/g,
+      " The response includes a code example. Please refer to the chat for the complete code. ",
+    );
 
-  // Replace inline code
-  cleaned = cleaned.replace(
-    /`[^`]*`/g,
-    " code snippet "
-  );
+    // Replace inline code
+    cleaned = cleaned.replace(/`[^`]*`/g, " code snippet ");
 
-  // Replace traceback/errors
-  cleaned = cleaned.replace(
-    /traceback[\s\S]*?(?=\n\n|$)/gi,
-    " Technical error details are available in the conversation. "
-  );
+    // Replace traceback/errors
+    cleaned = cleaned.replace(
+      /traceback[\s\S]*?(?=\n\n|$)/gi,
+      " Technical error details are available in the conversation. ",
+    );
 
-  // Remove URLs
-  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, "");
+    // Remove URLs
+    cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, "");
 
-  // Remove markdown formatting
-  cleaned = cleaned.replace(/[#>*_\[\](){}|]/g, " ");
+    // Remove markdown formatting
+    cleaned = cleaned.replace(/[#>*_\[\](){}|]/g, " ");
 
-  // Remove excessive punctuation
-  cleaned = cleaned.replace(/[;:"']/g, "");
+    // Remove excessive punctuation
+    cleaned = cleaned.replace(/[;:"']/g, "");
 
-  // Normalize whitespace
-  cleaned = cleaned.replace(/\s+/g, " ").trim();
+    // Normalize whitespace
+    cleaned = cleaned.replace(/\s+/g, " ").trim();
 
-  return cleaned;
-};
+    return cleaned;
+  };
   const handleReadAloud = (text, messageId) => {
     window.speechSynthesis.cancel();
 
@@ -877,414 +855,29 @@ function ChatBoard() {
       }}
     >
       {/* Sidebar */}
-      <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
-        {/* (toggle will appear inside header on the right when expanded) */}
-
-        <div className="sidebar-content">
-          <div className="sidebar-header">
-            <span className="sidebar-title">
-              <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
-            </span>
-
-            {/* Right-top toggle button shown when sidebar is expanded (in the red square) */}
-            {!isSidebarCollapsed && (
-              <button
-                className="sidebar-toggle"
-                onClick={() => setIsSidebarCollapsed(true)}
-                title="Hide sidebar"
-                aria-label="Hide sidebar"
-              >
-                <MdViewSidebar />
-              </button>
-            )}
-          </div>
-
-          <button
-            className="new-chat-btn"
-            onClick={createNewChat}
-            title="New chat"
-          >
-            <FaPlus /> <b>Add New conversation</b>
-          </button>
-          <button
-            className="new-chat-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowSearch((prev) => !prev);
-            }}
-            title="New chat"
-          >
-            <FaSearch /> <b>Search Conversations</b>
-          </button>
-          {showSearch && (
-            <SearchModal
-              sessions={sessions}
-              onSelect={(id) => setActiveSessionId(id)}
-              onClose={() => setShowSearch(false)}
-            />
-          )}
-
-          <div className="session-list">
-            {sessions.map((s) => (
-              <div
-                key={s.id}
-                className={`session-item ${
-                  s.id === activeSessionId ? "active" : ""
-                }`}
-              >
-                <div style={{ flex: 1 }} title={s.title}>
-                  {editingId === s.id ? (
-                    <input
-                      autoFocus
-                      className="session-title-input"
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => {
-                        const v = editingValue.trim() || "Untitled";
-                        renameChat(s.id, v);
-                        setEditingId(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          const v = editingValue.trim() || "Untitled";
-                          renameChat(s.id, v);
-                          setEditingId(null);
-                        } else if (e.key === "Escape") {
-                          setEditingId(null);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div
-                      onClick={() => openChat(s.id)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {s.title.length > 20 ? s.title.slice(0, 20) : s.title}
-                    </div>
-                  )}
-                </div>
-                {/* More options menu button */}
-                <button
-                  className="session-menu-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenMenuId(openMenuId === s.id ? null : s.id);
-                  }}
-                  aria-haspopup="true"
-                  aria-expanded={openMenuId === s.id}
-                  title="More options"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-                    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-                    <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-                  </svg>
-                </button>
-                {/* delete button removed — deletion is available from More Options menu */}
-
-                {/* Session menu dropdown */}
-                {openMenuId === s.id && (
-                  <div
-                    className="session-menu"
-                    onClick={(e) => e.stopPropagation()}
-                    role="menu"
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 6,
-                      }}
-                    >
-                      <button
-                        className="session-menu-item"
-                        onClick={() => {
-                          setEditingId(s.id);
-                          setEditingValue(s.title || "");
-                          setOpenMenuId(null);
-                        }}
-                      >
-                        Rename
-                      </button>
-                      {/* model-based rename removed - keep simple Rename action */}
-                    </div>
-                    <button
-                      className="session-menu-item"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch(
-                            `https://openaiserver-e9lo.onrender.com/api/chats/${s.id}/duplicate`,
-                            {
-                              method: "POST",
-                              headers: {
-                                Authorization: `Bearer ${token}`,
-                              },
-                            },
-                          );
-
-                          if (!response.ok) {
-                            throw new Error("Failed to duplicate chat");
-                          }
-
-                          const duplicatedChat = await response.json();
-
-                          const formattedChat = {
-                            id: duplicatedChat.id,
-                            title: duplicatedChat.title,
-                            messages:
-                              duplicatedChat.messages?.map((m) => ({
-                                id: m.id,
-                                role: m.role,
-                                content: m.content,
-                              })) || [],
-                          };
-
-                          setSessions((prev) => [formattedChat, ...prev]);
-
-                          setActiveSessionId(formattedChat.id);
-
-                          setOpenMenuId(null);
-                        } catch (error) {
-                          console.error(error);
-                        }
-                      }}
-                    >
-                      Duplicate
-                    </button>
-                    <button
-                      className="session-menu-item session-menu-delete"
-                      onClick={() => {
-                        setDeleteTargetId(s.id);
-                        setOpenMenuId(null);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          {/* Bottom version text */}
-          {!isSidebarCollapsed && (
-            <div
-              style={{
-                position: "relative",
-                background: "#f2f4f7",
-                color: "#1f2937",
-                padding: "12px 14px",
-                margin: "12px",
-                borderRadius: "10px",
-                fontWeight: "600",
-                fontSize: "0.95rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "0.75rem",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowFooterMenu((prev) => !prev);
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "0.9rem", color: "#111" }}>
-                  {userName || "Unknown user"}
-                </div>
-              </div>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  background: "#10a37f",
-                  color: "#fff",
-                  fontSize: "0.85rem",
-                  fontWeight: 700,
-                }}
-              >
-                {userName ? userName.charAt(0).toUpperCase() : "U"}
-              </span>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {isSidebarCollapsed && (
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: "48px",
-            background: "white",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            paddingTop: "12px",
-            zIndex: 2,
-            gap: "10px",
-          }}
-        >
-          <img
-            src="/NVlg.ico"
-            alt="NV Logo"
-            style={{
-              width: "32px",
-              height: "32px",
-              background: "gainsboro",
-              borderRadius: "4px",
-              cursor: "pointer",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "black",
-              fontSize: "16px",
-            }}
-            onClick={() => setIsSidebarCollapsed(false)}
-          />
-          <button
-            onClick={() => setIsSidebarCollapsed(false)}
-            style={{
-              width: "32px",
-              height: "32px",
-              background: "gainsboro",
-              borderRadius: "4px",
-              cursor: "pointer",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "black",
-              fontSize: "16px",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#bbb")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#bbb")
-            }
-            title="Expand sidebar"
-            aria-label="Expand sidebar"
-          >
-            <MdViewSidebar />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              createNewChat();
-            }}
-            style={{
-              width: "32px",
-              height: "32px",
-              background: "gainsboro",
-              borderRadius: "4px",
-              cursor: "pointer",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "black",
-              fontSize: "20px",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#bbb")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#bbb")
-            }
-            title="New chat"
-            aria-label="New chat"
-          >
-            <FaPlus />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowSearch((prev) => !prev);
-            }}
-            style={{
-              width: "32px",
-              height: "32px",
-              background: "gainsboro",
-              borderRadius: "4px",
-              cursor: "pointer",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "black",
-              fontSize: "20px",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "#bbb")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "#bbb")
-            }
-          >
-            <FaSearch />
-          </button>
-          {showSearch && (
-            <SearchModal
-              sessions={sessions}
-              onSelect={(id) => setActiveSessionId(id)}
-              onClose={() => setShowSearch(false)}
-            />
-          )}
-          <div
-            style={{
-              position: "absolute",
-              margin: "12px",
-              bottom: 0,
-              width: "48px",
-              background: "white",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              paddingTop: "12px",
-              zIndex: 2,
-              gap: "10px",
-              cursor: "pointer",
-            }}
-          >
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                background: "#10a37f",
-                color: "#fff",
-                fontSize: "0.85rem",
-                fontWeight: 700,
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowFooterMenu((prev) => !prev);
-              }}
-            >
-              {userName ? userName.charAt(0).toUpperCase() : "U"}
-            </span>
-          </div>
-        </div>
-      )}
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
+        createNewChat={createNewChat}
+        showSearch={showSearch}
+        setShowSearch={setShowSearch}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        openChat={openChat}
+        openMenuId={openMenuId}
+        setOpenMenuId={setOpenMenuId}
+        editingId={editingId}
+        setEditingId={setEditingId}
+        editingValue={editingValue}
+        setEditingValue={setEditingValue}
+        renameChat={renameChat}
+        token={token}
+        setSessions={setSessions}
+        setActiveSessionId={setActiveSessionId}
+        setDeleteTargetId={setDeleteTargetId}
+        userName={userName}
+        setShowFooterMenu={setShowFooterMenu}
+      />
 
       {/* Main Chat Area */}
       <div
@@ -1380,6 +973,83 @@ function ChatBoard() {
                 </div>
               </div>
             </div>
+          ) : isNewConversationMode &&
+            activeSession &&
+            activeSession.messages.length === 0 ? (
+            <>
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  flexDirection: "column",
+                }}
+              >
+                <h1
+                  style={{
+                    fontSize: "42px",
+                    marginBottom: "30px",
+                    fontWeight: "500",
+                  }}
+                >
+                  What’s on your mind today?
+                </h1>
+
+                <div
+                  style={{
+                    width: "70%",
+                    maxWidth: "900px",
+                    background: "#fff",
+                    border: "1px solid #ddd",
+                    borderRadius: "30px",
+                    padding: "12px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+                  }}
+                >
+                  <FaPlus />
+
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSend();
+                      }
+                    }}
+                    placeholder="Ask anything"
+                    style={{
+                      flex: 1,
+                      border: "none",
+                      outline: "none",
+                      fontSize: "18px",
+                      background: "transparent",
+                    }}
+                  />
+
+                  <FaMicrophone />
+
+                  <button
+                    onClick={handleSend}
+                    style={{
+                      border: "none",
+                      background: "#000",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      width: "42px",
+                      height: "42px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FaPaperPlane />
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
             <>
               {activeSession.messages.map((msg, i) => {
@@ -1587,7 +1257,7 @@ function ChatBoard() {
         </div>
 
         {/* Input area only if chat selected */}
-        {activeSession && (
+        {activeSession && !isNewConversationMode && (
           <footer
             style={{
               display: "flex",
@@ -1615,7 +1285,7 @@ function ChatBoard() {
                 style={{
                   width: "100%",
                   resize: "none",
-                  borderRadius: "10px",
+                  borderRadius: "50px",
                   padding: "10px",
                   fontSize: "1rem",
                   border: "1px solid #ccc",
