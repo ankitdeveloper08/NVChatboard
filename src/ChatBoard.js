@@ -769,44 +769,62 @@ function ChatBoard() {
     }
   };
 
+  const cleanTextForSpeech = (text) => {
+  let cleaned = text;
+
+  // Replace code blocks with a single natural sentence
+  cleaned = cleaned.replace(
+    /```[\s\S]*?```/g,
+    " The response includes a code example. Please refer to the chat for the complete code. "
+  );
+
+  // Replace inline code
+  cleaned = cleaned.replace(
+    /`[^`]*`/g,
+    " code snippet "
+  );
+
+  // Replace traceback/errors
+  cleaned = cleaned.replace(
+    /traceback[\s\S]*?(?=\n\n|$)/gi,
+    " Technical error details are available in the conversation. "
+  );
+
+  // Remove URLs
+  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, "");
+
+  // Remove markdown formatting
+  cleaned = cleaned.replace(/[#>*_\[\](){}|]/g, " ");
+
+  // Remove excessive punctuation
+  cleaned = cleaned.replace(/[;:"']/g, "");
+
+  // Normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+  return cleaned;
+};
   const handleReadAloud = (text, messageId) => {
     window.speechSynthesis.cancel();
 
-    let cleanText = text;
-
-    // Detect if any code exists
-    const hasCode =
-      /```[\s\S]*?```/.test(cleanText) || /`[^`]*`/.test(cleanText);
-
-    // Remove all code blocks
-    cleanText = cleanText.replace(/```[\s\S]*?```/g, " ");
-
-    // Remove inline code
-    cleanText = cleanText.replace(/`[^`]*`/g, " ");
-
-    // Add code notice only once
-    if (hasCode) {
-      cleanText +=
-        " This response contains code. Please see the code in our conversation history.";
-    }
-
-    // Remove URLs
-    cleanText = cleanText.replace(/https?:\/\/[^\s]+/g, "");
-
-    // Remove markdown symbols
-    cleanText = cleanText.replace(/[#>*_\-\[\]()]/g, " ");
-
-    // Remove unwanted punctuation
-    cleanText = cleanText.replace(/[;:'"`]/g, "");
-
-    // Clean extra spaces
-    cleanText = cleanText.replace(/\s+/g, " ").trim();
+    const cleanText = cleanTextForSpeech(text);
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
-    utterance.lang = "en-US";
-    utterance.rate = 1;
-    utterance.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+
+    const femaleVoice =
+      voices.find((v) => v.name === "Google UK English Female") ||
+      voices.find(
+        (v) => v.name === "Microsoft Zira - English (United States)",
+      ) ||
+      voices.find((v) => v.name === "Microsoft Heera - English (India)");
+
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+    }
+
+    utterance.rate = 0.9;
 
     utterance.onend = () => {
       setReadingId(null);
