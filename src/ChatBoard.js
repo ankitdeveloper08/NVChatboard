@@ -27,6 +27,7 @@ import "./App.css";
 import SearchModal from "./components/Modals/SearchModal";
 import ProfileModal from "././components/Modals/ProfileModal";
 import FooterMenu from "./FooterMenu";
+import ChatFooter from "./components/Footer/ChatFooter";
 import Sidebar from "./components/Sidebar/Sidebar";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
@@ -290,48 +291,46 @@ function ChatBoard() {
   useEffect(() => {
     loadChats();
   }, []);
-const openChat = async (chatId) => {
-  setPendingChat(false);
-  setIsNewConversationMode(false);
+  const openChat = async (chatId) => {
+    setPendingChat(false);
+    setIsNewConversationMode(false);
 
-  setActiveSessionId(String(chatId));
-  localStorage.setItem("activeSessionId", String(chatId));
+    setActiveSessionId(String(chatId));
+    localStorage.setItem("activeSessionId", String(chatId));
 
-  const existingChat = sessions.find(
-    (s) => String(s.id) === String(chatId)
-  );
+    const existingChat = sessions.find((s) => String(s.id) === String(chatId));
 
-  if (existingChat?.messages?.length > 0) {
-    return; // show instantly
-  }
+    if (existingChat?.messages?.length > 0) {
+      return; // show instantly
+    }
 
-  try {
-    const response = await fetch(`${API_URL}/api/chats/${chatId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const response = await fetch(`${API_URL}/api/chats/${chatId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const chat = await response.json();
+      const chat = await response.json();
 
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === chatId
-          ? {
-              ...s,
-              messages: chat.messages.map((m) => ({
-                id: m.id,
-                role: m.role,
-                content: m.content,
-              })),
-            }
-          : s
-      )
-    );
-  } catch (error) {
-    console.error(error);
-  }
-};
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === chatId
+            ? {
+                ...s,
+                messages: chat.messages.map((m) => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                })),
+              }
+            : s,
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   // Scroll to bottom
   useEffect(() => {
@@ -920,8 +919,6 @@ const openChat = async (chatId) => {
             padding: "1rem",
             display: "flex",
             flexDirection: "column",
-            alignItems: activeSession ? "stretch" : "center",
-            justifyContent: activeSession ? "flex-start" : "center",
           }}
         >
           {!activeSession && !pendingChat ? (
@@ -1259,139 +1256,19 @@ const openChat = async (chatId) => {
 
         {/* Input area only if chat selected */}
         {activeSession && !isNewConversationMode && (
-          <footer
-            style={{
-              display: "flex",
-              padding: "1rem",
-              borderTop: "1px solid #ddd",
-              background: "#fff",
-              flexWrap: "wrap",
-              alignItems: "flex-end",
-              lineHeight: "0",
-            }}
-          >
-            {/* textarea wrapper so textarea height can grow without moving the fixed buttons */}
-            <div style={{ flex: 1, minWidth: "200px" }}>
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  // adjust based on the event target for immediate feedback
-                  adjustTextareaHeight(e.target);
-                }}
-                onKeyDown={handleKeyPress}
-                placeholder="Ask anything..."
-                rows={1}
-                style={{
-                  width: "100%",
-                  resize: "none",
-                  borderRadius: "50px",
-                  padding: "10px",
-                  fontSize: "1rem",
-                  border: "1px solid #ccc",
-                  outline: "none",
-                  overflow: "hidden",
-                  maxHeight: TEXTAREA_MAX_HEIGHT + "px",
-                  boxSizing: "border-box",
-                  lineHeight: "1.4",
-                }}
-              />
-            </div>
-
-            {/* buttons column moved outside the textarea and kept to the right of the footer */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginLeft: 12,
-              }}
-            >
-              {/* Voice button (ADDED) - kept style consistent with existing buttons */}
-              <button
-                onClick={handleVoiceStart}
-                style={{
-                  height: 40,
-                  minWidth: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 8,
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  background: listening ? "rgba(77, 148, 255, 1)" : "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-                  fontSize: 18,
-                }}
-                title={listening ? "Listening..." : "Start voice input"}
-              >
-                <FaMicrophone />
-              </button>
-
-              {/* Clear button (now outside the textarea) */}
-              <button
-                type="button"
-                aria-label="Clear input"
-                title="Clear"
-                onClick={() => {
-                  setInput("");
-                  setTimeout(() => adjustTextareaHeight(), 0);
-                  inputRef.current?.focus();
-                }}
-                style={{
-                  height: 40,
-                  minWidth: "42px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 8,
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  background: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-                  fontSize: 16,
-                }}
-              >
-                Clear
-              </button>
-
-              {loading ? (
-                <button
-                  onClick={handleStop}
-                  style={{
-                    padding: "0 20px",
-                    backgroundColor: "black",
-                    color: "white",
-                    border: "red",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "1rem",
-                    fontWeight: 500,
-                    height: "40px",
-                  }}
-                >
-                  <FaStop color="white" />
-                </button>
-              ) : (
-                <button
-                  onClick={handleSend}
-                  style={{
-                    padding: "0 20px",
-                    backgroundColor: "#202123",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "1rem",
-                    fontWeight: 500,
-                    height: "40px",
-                  }}
-                >
-                  <FaPaperPlane size={15} />
-                </button>
-              )}
-            </div>
-          </footer>
+          <ChatFooter
+            input={input}
+            setInput={setInput}
+            inputRef={inputRef}
+            adjustTextareaHeight={adjustTextareaHeight}
+            handleKeyPress={handleKeyPress}
+            handleVoiceStart={handleVoiceStart}
+            listening={listening}
+            loading={loading}
+            handleStop={handleStop}
+            handleSend={handleSend}
+            TEXTAREA_MAX_HEIGHT={TEXTAREA_MAX_HEIGHT}
+          />
         )}
       </div>
 
