@@ -2,6 +2,7 @@ import React from "react";
 import { MdViewSidebar } from "react-icons/md";
 import { FaPlus, FaSearch } from "react-icons/fa";
 import SearchModal from "../Modals/SearchModal";
+import "../../styles/Sidebar.css";
 
 const Sidebar = ({
   isSidebarCollapsed,
@@ -25,6 +26,8 @@ const Sidebar = ({
   setDeleteTargetId,
   userName,
   setShowFooterMenu,
+  deletingChatId,
+  setDeletingChatId,
 }) => {
   return (
     <>
@@ -100,12 +103,24 @@ const Sidebar = ({
                     />
                   ) : (
                     <div
-                      onClick={() => openChat(s.id)}
-                      style={{ cursor: "pointer" }}
+                      onClick={() => deletingChatId !== s.id && openChat(s.id)}
+                      style={{
+                        cursor: deletingChatId === s.id ? "default" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
                     >
-                      {s.title.length > 20
-                        ? s.title.slice(0, 20)
-                        : s.title}
+                      {deletingChatId === s.id ? (
+                        <>
+                          <span className="sidebar-delete-spinner" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          {s.title.length > 20 ? s.title.slice(0, 20) : s.title}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -147,7 +162,7 @@ const Sidebar = ({
                               headers: {
                                 Authorization: `Bearer ${token}`,
                               },
-                            }
+                            },
                           );
 
                           const duplicatedChat = await response.json();
@@ -163,10 +178,7 @@ const Sidebar = ({
                               })) || [],
                           };
 
-                          setSessions((prev) => [
-                            formattedChat,
-                            ...prev,
-                          ]);
+                          setSessions((prev) => [formattedChat, ...prev]);
 
                           setActiveSessionId(formattedChat.id);
                           setOpenMenuId(null);
@@ -261,8 +273,8 @@ const Sidebar = ({
             onClick={() => setIsSidebarCollapsed(false)}
           />
 
-          <button 
-           style={{
+          <button
+            style={{
               width: "32px",
               height: "32px",
               background: "gainsboro",
@@ -275,12 +287,13 @@ const Sidebar = ({
               color: "black",
               fontSize: "16px",
             }}
-            onClick={() => setIsSidebarCollapsed(false)}>
+            onClick={() => setIsSidebarCollapsed(false)}
+          >
             <MdViewSidebar />
           </button>
 
-          <button 
-           style={{
+          <button
+            style={{
               width: "32px",
               height: "32px",
               background: "gainsboro",
@@ -293,12 +306,13 @@ const Sidebar = ({
               color: "black",
               fontSize: "20px",
             }}
-            onClick={createNewChat}>
+            onClick={createNewChat}
+          >
             <FaPlus />
           </button>
 
           <button
-           style={{
+            style={{
               width: "32px",
               height: "32px",
               background: "gainsboro",

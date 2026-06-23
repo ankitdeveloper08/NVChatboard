@@ -67,6 +67,7 @@ function ChatBoard() {
   const [pendingChat, setPendingChat] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(true);
   const [isOpeningChat, setIsOpeningChat] = useState(false);
+  const [deletingChatId, setDeletingChatId] = useState(null);
   const moreMenuRef = useRef(null);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
@@ -373,6 +374,8 @@ function ChatBoard() {
 
   const deleteChat = async (id) => {
     try {
+      setDeletingChatId(id);
+
       const res = await fetch(`${API_URL}/api/chats/${id}`, {
         method: "DELETE",
         headers: {
@@ -381,8 +384,7 @@ function ChatBoard() {
       });
 
       if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Delete failed");
+        throw new Error("Delete failed");
       }
 
       const filtered = sessions.filter((s) => s.id !== id);
@@ -394,7 +396,9 @@ function ChatBoard() {
         setActiveSessionId(null);
       }
     } catch (err) {
-      console.error("Delete failed:", err);
+      console.error(err);
+    } finally {
+      setDeletingChatId(null);
     }
   };
 
@@ -886,6 +890,8 @@ function ChatBoard() {
         setDeleteTargetId={setDeleteTargetId}
         userName={userName}
         setShowFooterMenu={setShowFooterMenu}
+        deletingChatId={deletingChatId}
+        setDeletingChatId={setDeletingChatId}
       />
 
       {/* Main Chat Area */}
