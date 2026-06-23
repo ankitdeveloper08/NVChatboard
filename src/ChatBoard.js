@@ -29,6 +29,7 @@ import ProfileModal from "././components/Modals/ProfileModal";
 import FooterMenu from "./FooterMenu";
 import ChatFooter from "./components/Footer/ChatFooter";
 import Sidebar from "./components/Sidebar/Sidebar";
+import DeleteConfirmationModal from "./components/Modals/DeleteConfirmationModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -901,7 +902,6 @@ function ChatBoard() {
         >
           <div
             style={{
-              // display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               gap: "1rem",
@@ -1054,181 +1054,205 @@ function ChatBoard() {
                 let codeBlockCounter = 0;
                 return (
                   <div
-                    key={msg.id || i}
-                    className={`message ${msg.role}`}
-                    style={{ position: "relative", maxWidth: "80%" }}
+                    style={{
+                      width: "100%",
+                      maxWidth: "850px", // same as input box
+                      margin: "0 auto",
+                      display: "flex",
+                      justifyContent:
+                        msg.role === "user" ? "flex-end" : "flex-start",
+                    }}
                   >
-                    {msg.role === "assistant" ? (
-                      <>
-                        <ReactMarkdown
-                          children={msg.content}
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            code({ inline, className, children, ...props }) {
-                              const match = /language-(\w+)/.exec(
-                                className || "",
-                              );
+                    <div
+                      key={msg.id || i}
+                      className={`message ${msg.role}`}
+                      style={{
+                        position: "relative",
+                        width: "fit-content",
+                        maxWidth: msg.role === "user" ? "60%" : "100%",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {msg.role === "assistant" ? (
+                        <>
+                          <ReactMarkdown
+                            children={msg.content}
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              code({ inline, className, children, ...props }) {
+                                const match = /language-(\w+)/.exec(
+                                  className || "",
+                                );
 
-                              if (!inline && match) {
-                                const copyId = `${msg.id || i}-${codeBlockCounter}`;
-                                codeBlockCounter += 1;
+                                if (!inline && match) {
+                                  const copyId = `${msg.id || i}-${codeBlockCounter}`;
+                                  codeBlockCounter += 1;
+
+                                  return (
+                                    <div style={{ position: "relative" }}>
+                                      <button
+                                        className="copy-btn"
+                                        onClick={() =>
+                                          handleCopy(
+                                            String(children).trim(),
+                                            copyId,
+                                          )
+                                        }
+                                      >
+                                        {copiedId === copyId
+                                          ? "Copied!"
+                                          : "Copy"}
+                                      </button>
+
+                                      <SyntaxHighlighter
+                                        style={atomOneDark}
+                                        language={match[1]}
+                                        PreTag="div"
+                                        {...props}
+                                      >
+                                        {String(children).replace(/\n$/, "")}
+                                      </SyntaxHighlighter>
+                                    </div>
+                                  );
+                                }
 
                                 return (
-                                  <div style={{ position: "relative" }}>
-                                    <button
-                                      className="copy-btn"
-                                      onClick={() =>
-                                        handleCopy(
-                                          String(children).trim(),
-                                          copyId,
-                                        )
-                                      }
-                                    >
-                                      {copiedId === copyId ? "Copied!" : "Copy"}
-                                    </button>
-
-                                    <SyntaxHighlighter
-                                      style={atomOneDark}
-                                      language={match[1]}
-                                      PreTag="div"
-                                      {...props}
-                                    >
-                                      {String(children).replace(/\n$/, "")}
-                                    </SyntaxHighlighter>
-                                  </div>
+                                  <code
+                                    style={{
+                                      background: "#eee",
+                                      padding: "2px 5px",
+                                      borderRadius: "4px",
+                                      fontFamily: "monospace",
+                                    }}
+                                    {...props}
+                                  >
+                                    {children}
+                                  </code>
                                 );
-                              }
+                              },
+                            }}
+                          />
 
-                              return (
-                                <code
-                                  style={{
-                                    background: "#eee",
-                                    padding: "2px 5px",
-                                    borderRadius: "4px",
-                                    fontFamily: "monospace",
-                                  }}
-                                  {...props}
-                                >
-                                  {children}
-                                </code>
-                              );
-                            },
-                          }}
-                        />
-
-                        {/* Action Bar */}
-                        <div
-                          className="message-actions"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "12px",
-                            marginTop: "8px",
-                            color: "#666",
-                          }}
-                        >
-                          {/* Copy */}
-                          <button
-                            onClick={() => handleCopy(msg.content, msg.id)}
-                            className="message-action-btn"
-                            title="Copy"
-                          >
-                            {copiedId === msg.id ? <FaCheck /> : <FaRegCopy />}
-                          </button>
-
-                          {/* Like */}
-                          <button
-                            className="message-action-btn"
-                            title="Like"
-                            onClick={() => console.log("Liked")}
-                          >
-                            👍
-                          </button>
-
-                          {/* Dislike */}
-                          <button
-                            className="message-action-btn"
-                            title="Dislike"
-                            onClick={() => console.log("Disliked")}
-                          >
-                            👎
-                          </button>
-
-                          {/* Share */}
-                          <button
-                            className="message-action-btn"
-                            title="Share"
-                            onClick={() => {
-                              if (navigator.share) {
-                                navigator.share({
-                                  text: msg.content,
-                                });
-                              } else {
-                                navigator.clipboard.writeText(msg.content);
-                                alert("Message copied for sharing");
-                              }
+                          {/* Action Bar */}
+                          <div
+                            className="message-actions"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                              marginTop: "8px",
+                              color: "#666",
                             }}
                           >
-                            ↗️
-                          </button>
-
-                          {/* Regenerate */}
-                          <button
-                            className="message-action-btn"
-                            title="Regenerate"
-                            onClick={() => handleSend()}
-                          >
-                            🔄
-                          </button>
-
-                          {/* More */}
-                          <div
-                            ref={openMoreMenuId === msg.id ? moreMenuRef : null}
-                            style={{ position: "relative" }}
-                          >
+                            {/* Copy */}
                             <button
+                              onClick={() => handleCopy(msg.content, msg.id)}
                               className="message-action-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-
-                                setOpenMoreMenuId(
-                                  openMoreMenuId === msg.id ? null : msg.id,
-                                );
-                              }}
+                              title="Copy"
                             >
-                              <BsThreeDots />
+                              {copiedId === msg.id ? (
+                                <FaCheck />
+                              ) : (
+                                <FaRegCopy />
+                              )}
                             </button>
 
-                            {openMoreMenuId === msg.id && (
-                              <div
-                                className="message-more-menu"
-                                onClick={(e) => e.stopPropagation()}
+                            {/* Like */}
+                            <button
+                              className="message-action-btn"
+                              title="Like"
+                              onClick={() => console.log("Liked")}
+                            >
+                              👍
+                            </button>
+
+                            {/* Dislike */}
+                            <button
+                              className="message-action-btn"
+                              title="Dislike"
+                              onClick={() => console.log("Disliked")}
+                            >
+                              👎
+                            </button>
+
+                            {/* Share */}
+                            <button
+                              className="message-action-btn"
+                              title="Share"
+                              onClick={() => {
+                                if (navigator.share) {
+                                  navigator.share({
+                                    text: msg.content,
+                                  });
+                                } else {
+                                  navigator.clipboard.writeText(msg.content);
+                                  alert("Message copied for sharing");
+                                }
+                              }}
+                            >
+                              ↗️
+                            </button>
+
+                            {/* Regenerate */}
+                            <button
+                              className="message-action-btn"
+                              title="Regenerate"
+                              onClick={() => handleSend()}
+                            >
+                              🔄
+                            </button>
+
+                            {/* More */}
+                            <div
+                              ref={
+                                openMoreMenuId === msg.id ? moreMenuRef : null
+                              }
+                              style={{ position: "relative" }}
+                            >
+                              <button
+                                className="message-action-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  setOpenMoreMenuId(
+                                    openMoreMenuId === msg.id ? null : msg.id,
+                                  );
+                                }}
                               >
-                                {readingId === msg.id ? (
-                                  <button
-                                    className="message-more-item"
-                                    onClick={stopReading}
-                                  >
-                                    ⏹ Stop Reading
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="message-more-item"
-                                    onClick={() =>
-                                      handleReadAloud(msg.content, msg.id)
-                                    }
-                                  >
-                                    🔊 Read Aloud
-                                  </button>
-                                )}
-                              </div>
-                            )}
+                                <BsThreeDots />
+                              </button>
+
+                              {openMoreMenuId === msg.id && (
+                                <div
+                                  className="message-more-menu"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {readingId === msg.id ? (
+                                    <button
+                                      className="message-more-item"
+                                      onClick={stopReading}
+                                    >
+                                      ⏹ Stop Reading
+                                    </button>
+                                  ) : (
+                                    <button
+                                      className="message-more-item"
+                                      onClick={() =>
+                                        handleReadAloud(msg.content, msg.id)
+                                      }
+                                    >
+                                      🔊 Read Aloud
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </>
-                    ) : (
-                      msg.content
-                    )}
+                        </>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1236,17 +1260,25 @@ function ChatBoard() {
               {loading && (
                 <div
                   style={{
-                    alignSelf: "flex-start",
-                    fontStyle: "italic",
-                    color: "#666",
-                    background: "white",
-                    padding: "10px 14px",
-                    borderRadius: "12px",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-                    maxWidth: "75%",
+                    width: "100%",
+                    maxWidth: "900px",
+                    margin: "0 auto",
+                    display: "flex",
+                    justifyContent: "flex-start",
                   }}
                 >
-                  Typing...
+                  <div
+                    style={{
+                      fontStyle: "italic",
+                      color: "#666",
+                      background: "white",
+                      padding: "10px 14px",
+                      borderRadius: "12px",
+                      boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    Typing...
+                  </div>
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -1274,66 +1306,11 @@ function ChatBoard() {
 
       {/* Delete confirmation modal */}
       {deleteTargetId && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
-          }}
-          onClick={() => setDeleteTargetId(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "white",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "360px",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-            }}
-          >
-            <h3 style={{ margin: 0, marginBottom: 8 }}>Delete conversation?</h3>
-            <p style={{ marginTop: 0, marginBottom: 16 }}>
-              Once you delete a conversation, the messages are gone forever on
-              every device.
-            </p>
-            <div
-              style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
-            >
-              <button
-                onClick={() => setDeleteTargetId(null)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                  background: "white",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleConfirmDelete(deleteTargetId)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  border: "none",
-                  background: "#d9534f",
-                  color: "white",
-                  cursor: "pointer",
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteConfirmationModal
+          deleteTargetId={deleteTargetId}
+          setDeleteTargetId={setDeleteTargetId}
+          handleConfirmDelete={handleConfirmDelete}
+        />
       )}
       <ProfileModal
         isOpen={showProfileModal}
