@@ -30,6 +30,7 @@ import FooterMenu from "./FooterMenu";
 import ChatFooter from "./components/Footer/ChatFooter";
 import Sidebar from "./components/Sidebar/Sidebar";
 import DeleteConfirmationModal from "./components/Modals/DeleteConfirmationModal";
+import ChatLoader from "./components/Modals/ChatLoader";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -64,6 +65,8 @@ function ChatBoard() {
   const [openMoreMenuId, setOpenMoreMenuId] = useState(null);
   const [readingId, setReadingId] = useState(null);
   const [pendingChat, setPendingChat] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(true);
+  const [isOpeningChat, setIsOpeningChat] = useState(false);
   const moreMenuRef = useRef(null);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
@@ -251,6 +254,7 @@ function ChatBoard() {
 
   const loadChats = async () => {
     try {
+      setIsChatLoading(true);
       const response = await fetch(`${API_URL}/api/chats`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -271,7 +275,6 @@ function ChatBoard() {
       }));
       setSessions(formattedChats);
 
-      // RESTORE LAST OPEN CHAT
       const savedChatId = localStorage.getItem("activeSessionId");
 
       if (
@@ -286,6 +289,8 @@ function ChatBoard() {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsChatLoading(false);
     }
   };
   // Load stored chats
@@ -293,19 +298,22 @@ function ChatBoard() {
     loadChats();
   }, []);
   const openChat = async (chatId) => {
-    setPendingChat(false);
-    setIsNewConversationMode(false);
-
-    setActiveSessionId(String(chatId));
-    localStorage.setItem("activeSessionId", String(chatId));
-
-    const existingChat = sessions.find((s) => String(s.id) === String(chatId));
-
-    if (existingChat?.messages?.length > 0) {
-      return; // show instantly
-    }
-
+    setIsOpeningChat(true);
     try {
+      setPendingChat(false);
+      setIsNewConversationMode(false);
+
+      setActiveSessionId(String(chatId));
+      localStorage.setItem("activeSessionId", String(chatId));
+
+      const existingChat = sessions.find(
+        (s) => String(s.id) === String(chatId),
+      );
+
+      if (existingChat?.messages?.length > 0) {
+        return;
+      }
+
       const response = await fetch(`${API_URL}/api/chats/${chatId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -330,9 +338,10 @@ function ChatBoard() {
       );
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsOpeningChat(false);
     }
   };
-
   // Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -921,7 +930,11 @@ function ChatBoard() {
             flexDirection: "column",
           }}
         >
-          {!activeSession && !pendingChat ? (
+          {isChatLoading ? (
+            <ChatLoader text="Loading conversations..." />
+          ) : isOpeningChat ? (
+            <ChatLoader text="Loading chat..." />
+          ) : !activeSession && !pendingChat ? (
             <div className="empty-chat">
               <div className="empty-chat-content">
                 <h2>Hi there 👋</h2>
