@@ -858,6 +858,23 @@ function ChatBoard() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleFooterMenuOutsideClick = (event) => {
+      if (
+        footerMenuRef.current &&
+        !footerMenuRef.current.contains(event.target)
+      ) {
+        setShowFooterMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleFooterMenuOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleFooterMenuOutsideClick);
+    };
+  }, []);
+
   // --- JSX ---
   return (
     <div
