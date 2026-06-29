@@ -195,7 +195,10 @@ const Sidebar = ({
                     <button
                       className="session-menu-item session-menu-delete"
                       onClick={() => {
-                        setDeleteTargetId(s.id);
+                        setDeleteTargetId({
+                          id: s.id,
+                          title: s.title,
+                        });
                         setOpenMenuId(null);
                       }}
                     >

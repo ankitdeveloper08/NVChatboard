@@ -1,4 +1,5 @@
 import React from "react";
+import { MdDeleteOutline, MdWarningAmber } from "react-icons/md";
 
 const DeleteConfirmationModal = ({
   deleteTargetId,
@@ -12,11 +13,12 @@ const DeleteConfirmationModal = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.45)",
+        background: "rgba(15, 23, 42, 0.55)",
+        backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 50,
+        zIndex: 1000,
       }}
       onClick={() => setDeleteTargetId(null)}
     >
@@ -25,46 +27,77 @@ const DeleteConfirmationModal = ({
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
-          padding: "20px",
-          borderRadius: "8px",
-          width: "360px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+          background: "#ffffff",
+          width: "390px",
+          padding: "28px",
+          borderRadius: "18px",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
+          animation: "fadeIn 0.2s ease-in-out",
         }}
       >
+        {/* Icon */}
+        <div
+          style={{
+            width: "55px",
+            height: "55px",
+            borderRadius: "50%",
+            background: "#fee2e2",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <MdWarningAmber size={28} color="#dc2626" />
+        </div>
+
+        {/* Title */}
         <h3
           style={{
             margin: 0,
-            marginBottom: "8px",
+            fontSize: "20px",
+            fontWeight: "700",
+            color: "#111827",
+            marginBottom: "10px",
           }}
         >
           Delete conversation?
         </h3>
 
+        {/* Message */}
         <p
           style={{
-            marginTop: 0,
-            marginBottom: "16px",
+            color: "#6b7280",
+            fontSize: "14px",
+            lineHeight: "1.6",
+            marginBottom: "22px",
           }}
         >
-          Once you delete a conversation, the messages are gone forever on every
-          device.
+          Are you sure you want to delete{" "}
+          <strong style={{ color: "#111827" }}>"{deleteTargetId.title}"</strong>
+          ?
+          <br />
+          This action cannot be undone. All messages in this conversation will
+          be permanently removed.
         </p>
 
+        {/* Buttons */}
         <div
           style={{
             display: "flex",
             justifyContent: "flex-end",
-            gap: "8px",
+            gap: "12px",
           }}
         >
           <button
             onClick={() => setDeleteTargetId(null)}
             style={{
-              padding: "8px 12px",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-              background: "#fff",
+              padding: "10px 18px",
+              borderRadius: "10px",
+              border: "1px solid #d1d5db",
+              background: "#ffffff",
+              color: "#374151",
+              fontWeight: "600",
               cursor: "pointer",
             }}
           >
@@ -72,16 +105,21 @@ const DeleteConfirmationModal = ({
           </button>
 
           <button
-            onClick={() => handleConfirmDelete(deleteTargetId)}
+            onClick={() => handleConfirmDelete(deleteTargetId.id)}
             style={{
-              padding: "8px 12px",
-              borderRadius: "6px",
+              padding: "10px 18px",
+              borderRadius: "10px",
               border: "none",
-              background: "#d9534f",
-              color: "#fff",
+              background: "#dc2626",
+              color: "#ffffff",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
               cursor: "pointer",
             }}
           >
+            <MdDeleteOutline size={20} />
             Delete
           </button>
         </div>
