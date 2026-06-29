@@ -13,8 +13,8 @@
   justify-content: space-between;
   padding: 10px 12px;
   margin-right: 13px;
- margin-left: 3px;
- height: 43px;
+  margin-left: 3px;
+  height: 43px;
 
   min-height: 43px;
   border-radius: 8px;
@@ -165,6 +165,17 @@
 
 .session-menu-delete:hover {
   background: #fee2e2;
+}
+
+.sidebar-title img {
+  width: 90px;
+  object-fit: contain;
+}
+
+.sidekick-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: #5b6670;
 }
 
 @keyframes spin {

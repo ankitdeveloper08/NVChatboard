@@ -12,21 +12,14 @@ const ProfileModal = ({
 
   return (
     <div className="profile-overlay" onClick={onClose}>
-      <div
-        className="profile-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={onClose}>
           ✕
         </button>
 
         <div className="profile-header">
           {userPicture ? (
-            <img
-              src={userPicture}
-              alt="Profile"
-              className="profile-avatar"
-            />
+            <img src={userPicture} alt="Profile" className="profile-avatar" />
           ) : (
             <div className="profile-avatar profile-avatar-placeholder">
               {userName?.charAt(0)?.toUpperCase()}
@@ -34,7 +27,7 @@ const ProfileModal = ({
           )}
 
           <h2>{userName}</h2>
-          <p className="profile-subtitle">Chat with NewVision AI Assistant</p>
+          <h3 className="profile-subtitle">NewVision | Sidekick</h3>
         </div>
 
         <div className="profile-info">

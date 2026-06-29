@@ -155,7 +155,7 @@ const Register = () => {
             marginBottom: "30px",
           }}
         >
-          Continue to NewVision AI
+          Continue to NewVision | Sidekick
         </p>
 
         {error && (

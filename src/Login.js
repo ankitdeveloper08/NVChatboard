@@ -230,7 +230,7 @@ const Login = () => {
             marginBottom: "30px",
           }}
         >
-          Sign in to continue to NewVision AI
+          Sign in to continue to NewVision | Sidekick
         </p>
 
         {error && (

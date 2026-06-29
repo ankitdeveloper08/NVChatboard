@@ -960,8 +960,8 @@ function ChatBoard() {
           ) : !activeSession && !pendingChat ? (
             <div className="empty-chat">
               <div className="empty-chat-content">
-                <h2>Hi there 👋</h2>
-                <p>What should we dive into today?</p>
+                <h2>Hi, {userName?.split(" ")[0] || "User"}! 👋</h2>
+                <h4> What’s on your mind today?</h4>
 
                 <div className="chat-placeholder">
                   <div style={{ textAlign: "center", fontSize: "1.2rem" }}>
@@ -1028,6 +1028,15 @@ function ChatBoard() {
                     fontWeight: "500",
                   }}
                 >
+                  Hi, {userName?.split(" ")[0] || "User"}!
+                </h1>
+                <h1
+                  style={{
+                    fontSize: "42px",
+                    marginBottom: "30px",
+                    fontWeight: "500",
+                  }}
+                >
                   What’s on your mind today?
                 </h1>
 
@@ -1045,7 +1054,7 @@ function ChatBoard() {
                     boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
                   }}
                 >
-                  <FaPlus />
+                  {/* <FaPlus /> */}
 
                   <input
                     value={input}
