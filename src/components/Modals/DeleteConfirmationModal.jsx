@@ -28,7 +28,7 @@ const DeleteConfirmationModal = ({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#ffffff",
-          width: "390px",
+          width: "550px",
           padding: "28px",
           borderRadius: "18px",
           boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
