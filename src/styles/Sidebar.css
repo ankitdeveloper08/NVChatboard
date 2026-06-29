@@ -167,7 +167,7 @@
 }
 
 .session-menu-delete:hover {
-  background: #e97373;
+  background-color: rgba(239, 68, 68, 0.08);
   border-radius: 6px;
 }
 
