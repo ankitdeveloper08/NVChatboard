@@ -939,7 +939,26 @@ function ChatBoard() {
               gap: "1rem",
             }}
           >
-            <img src="/NVlogo.jpg" alt="NV Logo" height={"50px"} />
+            <strong
+              style={{
+                height: "40px",
+                lineHeight: "40px",
+                color: "#5b6670",
+                fontSize: "20px",
+                fontWeight: "700",
+              }}
+            >
+              {" "}
+              NV | Assistant
+              <img
+                src="/NVlg.ico"
+                alt="NV Logo"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                }}
+              />
+            </strong>
           </div>
         </header>
 

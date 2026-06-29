@@ -1,6 +1,7 @@
 import React from "react";
 import { MdViewSidebar } from "react-icons/md";
-import { FaPlus, FaSearch } from "react-icons/fa";
+import { FaSearch } from "react-icons/fa";
+import { FaPenToSquare } from "react-icons/fa6";
 import SearchModal from "../Modals/SearchModal";
 import "../../styles/Sidebar.css";
 
@@ -52,7 +53,7 @@ const Sidebar = ({
           </div>
 
           <button className="new-chat-btn" onClick={createNewChat}>
-            <FaPlus /> <b>Add New conversation</b>
+            <FaPenToSquare /> <b> New Conversation</b>
           </button>
 
           <button
@@ -313,7 +314,7 @@ const Sidebar = ({
             }}
             onClick={createNewChat}
           >
-            <FaPlus />
+            <FaPenToSquare />
           </button>
 
           <button
