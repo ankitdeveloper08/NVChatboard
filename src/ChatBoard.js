@@ -458,11 +458,26 @@ function ChatBoard() {
   };
 
   const handleSend = async () => {
-    if (limitExpired) return;
     if (!input.trim()) return;
-    setIsNewConversationMode(false);
-    let fullText = "";
     const question = input;
+    setIsNewConversationMode(false);
+    try {
+      const statusResponse = await fetch(`${API_URL}/api/prompt-status`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const statusData = await statusResponse.json();
+      if (statusData.isLimitReached) {
+        setLimitMessage(statusData.message || "Daily prompt limit reached.");
+        setLimitExpired(true);
+        return;
+      }
+      setLimitExpired(false);
+    } catch (error) {
+      console.error("Prompt status check failed:", error);
+    }
+    let fullText = "";
 
     const uid = crypto.randomUUID();
     const userMessage = {
@@ -557,6 +572,18 @@ function ChatBoard() {
         const error = await response.json();
         setLimitMessage(error.message || "Daily prompt limit reached.");
         setLimitExpired(true);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === chatId
+              ? {
+                  ...s,
+                  messages: s.messages.filter(
+                    (m) => m.id !== assistantMessage.id,
+                  ),
+                }
+              : s,
+          ),
+        );
         return;
       }
       const reader = response.body.getReader();
@@ -581,10 +608,8 @@ function ChatBoard() {
             const parsed = JSON.parse(dataStr);
             if (parsed.type === "limit") {
               if (parsed.remaining === 0) {
-                setTimeout(() => {
-                  setLimitMessage("Daily prompt limit reached.");
-                  setLimitExpired(true);
-                }, 500);
+                setLimitMessage("Daily prompt limit reached.");
+                setLimitExpired(true);
               }
               continue;
             }
@@ -617,10 +642,19 @@ function ChatBoard() {
       if (fullText.trim()) {
         await saveMessageToDB(chatId, "assistant", fullText);
       }
-    } catch (err) {
-      if (err.name === "AbortError") {
-        return;
+      const status = await fetch(`${API_URL}/api/prompt-status`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const latest = await status.json();
+      if (latest.isLimitReached) {
+        setLimitMessage(latest.message);
+        setLimitExpired(true);
       }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+
       console.error("Chat error:", err);
     } finally {
       setLoading(false);
