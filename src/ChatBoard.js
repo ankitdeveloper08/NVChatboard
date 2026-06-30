@@ -850,6 +850,7 @@ function ChatBoard() {
         setShowFooterMenu={setShowFooterMenu}
         deletingChatId={deletingChatId}
         setDeletingChatId={setDeletingChatId}
+        limitExpired={limitExpired}
       />
 
       {/* Main Chat Area */}

@@ -30,6 +30,7 @@ const Sidebar = ({
   setShowFooterMenu,
   deletingChatId,
   setDeletingChatId,
+  limitExpired,
 }) => {
   const { user } = useAuth();
   return (
@@ -53,9 +54,15 @@ const Sidebar = ({
               </button>
             )}
           </div>
-          {user?.role === "ADMIN" && <button className="new-chat-btn">Upload Document</button>}
+          {user?.role === "ADMIN" && (
+            <button className="new-chat-btn">Upload Document</button>
+          )}
 
-          <button className="new-chat-btn" onClick={createNewChat}>
+          <button
+            disabled={limitExpired}
+            className="new-chat-btn"
+            onClick={createNewChat}
+          >
             <FaPenToSquare /> <b> New Conversation</b>
           </button>
 
