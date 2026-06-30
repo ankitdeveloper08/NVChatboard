@@ -37,7 +37,7 @@ SyntaxHighlighter.registerLanguage("json", json);
 
 function ChatBoard() {
   const API_URL = process.env.REACT_APP_RAG_API_URL;
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const sessionsRef = useRef(sessions); // <-- new
@@ -75,25 +75,25 @@ function ChatBoard() {
   const footerMenuRef = useRef(null);
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("token");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("authProvider");
-    localStorage.removeItem("activeSessionId");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("userName");
+    sessionStorage.removeItem("userEmail");
+    sessionStorage.removeItem("authProvider");
+    sessionStorage.removeItem("activeSessionId");
 
     navigate("/");
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     if (!token) {
       navigate("/", { replace: true });
       return;
     }
 
-    const storedName = localStorage.getItem("userName");
+    const storedName = sessionStorage.getItem("userName");
 
     if (storedName) {
       setUserName(storedName);
@@ -276,7 +276,7 @@ function ChatBoard() {
       }));
       setSessions(formattedChats);
 
-      const savedChatId = localStorage.getItem("activeSessionId");
+      const savedChatId = sessionStorage.getItem("activeSessionId");
 
       if (
         savedChatId &&
@@ -305,7 +305,7 @@ function ChatBoard() {
       setIsNewConversationMode(false);
 
       setActiveSessionId(String(chatId));
-      localStorage.setItem("activeSessionId", String(chatId));
+      sessionStorage.setItem("activeSessionId", String(chatId));
 
       const existingChat = sessions.find(
         (s) => String(s.id) === String(chatId),
@@ -363,7 +363,7 @@ function ChatBoard() {
     setPendingChat(true);
     setIsNewConversationMode(true);
 
-    localStorage.removeItem("activeSessionId");
+    sessionStorage.removeItem("activeSessionId");
   };
   // Create a new chat from a suggestion and optionally send immediately
   const handleSuggestion = (text) => {
@@ -491,7 +491,7 @@ function ChatBoard() {
         setSessions((prev) => [newChat, ...prev]);
 
         setActiveSessionId(String(chat.id));
-        localStorage.setItem("activeSessionId", String(chat.id));
+        sessionStorage.setItem("activeSessionId", String(chat.id));
 
         chatId = chat.id;
 
@@ -579,6 +579,7 @@ function ChatBoard() {
 
               // use safe append to avoid joining words
               fullText = appendChunk(fullText, content);
+              console.log("Chunk:", JSON.stringify(content));
 
               // 🔄 Live update UI
               setSessions((prev) =>
@@ -1391,7 +1392,7 @@ function ChatBoard() {
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         userName={userName}
-        userEmail={localStorage.getItem("userEmail") || ""}
+        userEmail={sessionStorage.getItem("userEmail") || ""}
         userPicture=""
       />
       <FooterMenu

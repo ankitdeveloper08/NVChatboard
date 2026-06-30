@@ -4,6 +4,7 @@ import { FaSearch } from "react-icons/fa";
 import { FaPenToSquare } from "react-icons/fa6";
 import SearchModal from "../Modals/SearchModal";
 import "../../styles/Sidebar.css";
+import { useAuth } from "../../context/AuthContext";
 
 const Sidebar = ({
   isSidebarCollapsed,
@@ -30,6 +31,7 @@ const Sidebar = ({
   deletingChatId,
   setDeletingChatId,
 }) => {
+  const { user } = useAuth();
   return (
     <>
       {/* Expanded Sidebar */}
@@ -51,6 +53,7 @@ const Sidebar = ({
               </button>
             )}
           </div>
+          {user?.role === "ADMIN" && <button className="new-chat-btn">Upload Document</button>}
 
           <button className="new-chat-btn" onClick={createNewChat}>
             <FaPenToSquare /> <b> New Conversation</b>

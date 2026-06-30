@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
 
-const API_URL = "https://openaiserver-e9lo.onrender.com/api/auth";
+const API_URL = process.env.REACT_APP_RAG_API_URL;
 
 const Login = () => {
   const navigate = useNavigate();
@@ -11,21 +11,23 @@ const Login = () => {
   const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
-
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
+  // ✅ auto redirect if already logged in
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    const isAuthenticated =
+      sessionStorage.getItem("isAuthenticated") === "true";
 
     if (isAuthenticated) {
       navigate("/chat", { replace: true });
     }
   }, [navigate]);
 
+  // Google script load
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
@@ -47,37 +49,39 @@ const Login = () => {
     return /^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(email);
   };
 
+  // ---------------- GOOGLE LOGIN ----------------
   const handleGoogleCredentialResponse = async (response) => {
     try {
       setGoogleLoading(true);
       setError("");
 
-      const res = await fetch(
-        "https://openaiserver-e9lo.onrender.com/api/auth/google",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            credential: response.credential,
-          }),
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          credential: response.credential,
+        }),
+      });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message);
-      }
+      if (!res.ok) throw new Error(data.message);
 
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userName", data.user.name);
-      localStorage.setItem("userEmail", data.user.email);
-      localStorage.setItem("authProvider", "google");
+      // ✅ IMPORTANT: store FIRST
+      sessionStorage.setItem("isAuthenticated", "true");
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("userName", data.user.name);
+      sessionStorage.setItem("userEmail", data.user.email);
+      sessionStorage.setItem("role", data.user.role);
 
-      navigate("/chat", { replace: true });
+      window.dispatchEvent(new Event("auth-change"));
+
+      // ✅ force small delay before navigation
+      setTimeout(() => {
+        navigate("/chat", { replace: true });
+      }, 100);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -109,56 +113,34 @@ const Login = () => {
     }
   };
 
+  // ---------------- EMAIL LOGIN ----------------
   const handleLogin = async () => {
     try {
       setLoading(true);
       setError("");
 
-      if (!email.trim()) {
-        setError("Email is required");
-        return;
-      }
+      if (!email.trim()) return setError("Email is required");
+      if (!isValidGmail(email))
+        return setError("Please enter a valid Gmail address");
+      if (!password.trim()) return setError("Password is required");
 
-      if (!isValidGmail(email)) {
-        setError("Please enter a valid Gmail address");
-        return;
-      }
-
-      if (!password.trim()) {
-        setError("Password is required");
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/login`, {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed");
-      }
+      if (!response.ok) throw new Error(data.message || "Login failed");
 
-      localStorage.setItem("isAuthenticated", "true");
+      // ✅ sessionStorage ONLY
+      sessionStorage.setItem("isAuthenticated", "true");
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("userName", data.user?.name);
+      sessionStorage.setItem("userEmail", data.user?.email);
 
-      localStorage.setItem("token", data.token || "");
-
-      localStorage.setItem("userName", data.user?.name || "");
-
-      localStorage.setItem("userEmail", data.user?.email || "");
-
-      localStorage.setItem("authProvider", "local");
-
-      navigate("/chat", {
-        replace: true,
-      });
+      navigate("/chat", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -167,9 +149,7 @@ const Login = () => {
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleLogin();
-    }
+    if (e.key === "Enter") handleLogin();
   };
 
   const inputStyle = {
@@ -179,7 +159,6 @@ const Login = () => {
     borderRadius: "12px",
     marginBottom: "14px",
     fontSize: "15px",
-    boxSizing: "border-box",
     outline: "none",
   };
 
@@ -207,30 +186,13 @@ const Login = () => {
         <img
           src="/NVlogo.jpg"
           alt="NewVision"
-          style={{
-            width: "150px",
-            display: "block",
-            margin: "0 auto 20px",
-          }}
+          style={{ width: "150px", display: "block", margin: "0 auto 20px" }}
         />
 
-        <h1
-          style={{
-            textAlign: "center",
-            marginBottom: "8px",
-          }}
-        >
-          Welcome back
-        </h1>
+        <h1 style={{ textAlign: "center" }}>Welcome back</h1>
 
-        <p
-          style={{
-            textAlign: "center",
-            color: "#6b7280",
-            marginBottom: "30px",
-          }}
-        >
-          Sign in to continue to NewVision | Sidekick
+        <p style={{ textAlign: "center", color: "#6b7280" }}>
+          Sign in to continue to Sidekick
         </p>
 
         {error && (
@@ -241,7 +203,6 @@ const Login = () => {
               padding: "12px",
               borderRadius: "10px",
               marginBottom: "15px",
-              fontSize: "14px",
             }}
           >
             {error}
@@ -257,49 +218,27 @@ const Login = () => {
           onKeyDown={handleKeyPress}
         />
 
-        <div
+        <input
+          style={inputStyle}
+          type={showPassword ? "text" : "password"}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={handleKeyPress}
+        />
+
+        <button
+          onClick={() => setShowPassword(!showPassword)}
           style={{
-            position: "relative",
+            marginBottom: "10px",
+            background: "none",
+            border: "none",
+            color: "#2563eb",
+            cursor: "pointer",
           }}
         >
-          <input
-            style={{
-              ...inputStyle,
-              marginBottom: "0",
-            }}
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={handleKeyPress}
-          />
-
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            style={{
-              position: "absolute",
-              right: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              color: "#2563eb",
-              fontWeight: 600,
-            }}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-
-        <div
-          style={{
-            textAlign: "right",
-            marginTop: "10px",
-            marginBottom: "20px",
-          }}
-        ></div>
+          {showPassword ? "Hide" : "Show"}
+        </button>
 
         <button
           onClick={handleLogin}
@@ -307,98 +246,29 @@ const Login = () => {
           style={{
             width: "100%",
             padding: "14px",
-            border: "none",
             borderRadius: "12px",
-            cursor: "pointer",
             background: "#2563eb",
             color: "#fff",
-            fontWeight: 600,
-            fontSize: "15px",
+            border: "none",
           }}
         >
           {loading ? "Signing in..." : "Continue"}
         </button>
 
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "18px",
-            color: "#6b7280",
-          }}
-        >
-          Don't have an account?{" "}
-          <Link
-            to="/register"
-            style={{
-              color: "#2563eb",
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Sign up
-          </Link>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            margin: "30px 0",
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              height: "1px",
-              background: "#e5e7eb",
-            }}
-          />
-
-          <span
-            style={{
-              margin: "0 12px",
-              color: "#9ca3af",
-              fontSize: "14px",
-            }}
-          >
-            OR
-          </span>
-
-          <div
-            style={{
-              flex: 1,
-              height: "1px",
-              background: "#e5e7eb",
-            }}
-          />
+        <div style={{ marginTop: "20px", textAlign: "center" }}>
+          <Link to="/register">Sign up</Link>
         </div>
 
         <div
           id="google-signin-button"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-          }}
+          style={{ display: "flex", justifyContent: "center", marginTop: 20 }}
         />
       </div>
 
       {googleLoading && (
         <div className="google-loader-overlay">
           <div className="google-loader-card">
-            <img
-              src="/NVlogo.jpg"
-              alt="NewVision"
-              className="google-loader-logo"
-            />
-
-            <div className="google-loader-spinner" />
-
-            <h3 className="google-loader-title">Signing you in</h3>
-
-            <p className="google-loader-text">
-              Authenticating with Google
-              <span className="loading-dots"></span>
-            </p>
+            <h3>Signing you in...</h3>
           </div>
         </div>
       )}
