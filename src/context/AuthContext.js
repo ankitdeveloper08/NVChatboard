@@ -12,8 +12,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = sessionStorage.getItem("token"); // ✅ FIXED
 
-      console.log("TOKEN IN AUTH:", token);
-
       if (!token) {
         setUser(null);
         setLoading(false);
@@ -25,8 +23,6 @@ export const AuthProvider = ({ children }) => {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      console.log("AUTH USER:", res.data.user);
 
       setUser(res.data.user);
     } catch (err) {

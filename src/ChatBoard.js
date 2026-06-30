@@ -31,6 +31,7 @@ import ChatFooter from "./components/Footer/ChatFooter";
 import Sidebar from "./components/Sidebar/Sidebar";
 import DeleteConfirmationModal from "./components/Modals/DeleteConfirmationModal";
 import ChatLoader from "./components/Modals/ChatLoader";
+import ChatLimitModal from "./components/Modals/ChatLimitModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -68,6 +69,8 @@ function ChatBoard() {
   const [isChatLoading, setIsChatLoading] = useState(true);
   const [isOpeningChat, setIsOpeningChat] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState(null);
+  const [limitExpired, setLimitExpired] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
   const moreMenuRef = useRef(null);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
@@ -455,15 +458,17 @@ function ChatBoard() {
   };
 
   const handleSend = async () => {
+    if (limitExpired) return;
     if (!input.trim()) return;
     setIsNewConversationMode(false);
     let fullText = "";
+    const question = input;
 
     const uid = crypto.randomUUID();
     const userMessage = {
       id: uid,
       role: "user",
-      content: input,
+      content: question,
     };
     let chatId = activeSessionId;
 
@@ -484,7 +489,7 @@ function ChatBoard() {
 
         const newChat = {
           id: chat.id,
-          title: input.slice(0, 30),
+          title: question.slice(0, 30),
           messages: [],
         };
 
@@ -501,15 +506,14 @@ function ChatBoard() {
         return;
       }
     }
-    await saveMessageToDB(chatId, "user", input);
+    await saveMessageToDB(chatId, "user", question);
 
-    // 🧠 Add user message
     setSessions((prev) =>
       prev.map((s) =>
         s.id === chatId
           ? {
               ...s,
-              title: s.messages.length === 0 ? input.slice(0, 30) : s.title,
+              title: s.messages.length === 0 ? question.slice(0, 30) : s.title,
               messages: [...(s.messages || []), userMessage],
             }
           : s,
@@ -518,7 +522,6 @@ function ChatBoard() {
     setInput("");
     setLoading(true);
 
-    // Assistant placeholder
     const assistantMessage = {
       id: `msg-${Date.now()}-assistant`,
       role: "assistant",
@@ -528,14 +531,16 @@ function ChatBoard() {
     setSessions((prev) =>
       prev.map((s) =>
         s.id === chatId
-          ? { ...s, messages: [...(s.messages || []), assistantMessage] }
+          ? {
+              ...s,
+              messages: [...(s.messages || []), assistantMessage],
+            }
           : s,
       ),
     );
 
     try {
       controllerRef.current = new AbortController();
-      console.log("📘 Asking /ask-docs (stream)...");
 
       const response = await fetch(`${API_URL}/ask-docs`, {
         method: "POST",
@@ -543,26 +548,29 @@ function ChatBoard() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ question: input }),
+        body: JSON.stringify({
+          question,
+        }),
         signal: controllerRef.current.signal,
       });
-
-      if (!response.ok)
-        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-
+      if (response.status === 429) {
+        const error = await response.json();
+        setLimitMessage(error.message || "Daily prompt limit reached.");
+        setLimitExpired(true);
+        return;
+      }
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
-      let gotAnswerFromDocs = false;
-
-      // 🔁 Read streaming chunks
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, {
+          stream: true,
+        });
         const parts = buffer.split("\n\n");
-        buffer = parts.pop(); // last incomplete part stays in buffer
+        buffer = parts.pop();
 
         for (const part of parts) {
           if (!part.startsWith("data:")) continue;
@@ -571,17 +579,18 @@ function ChatBoard() {
 
           try {
             const parsed = JSON.parse(dataStr);
+            if (parsed.type === "limit") {
+              if (parsed.remaining === 0) {
+                setTimeout(() => {
+                  setLimitMessage("Daily prompt limit reached.");
+                  setLimitExpired(true);
+                }, 500);
+              }
+              continue;
+            }
             const content = parsed.content || "";
-            const source = parsed.source || "openai";
-
             if (content) {
-              gotAnswerFromDocs = source === "docs";
-
-              // use safe append to avoid joining words
               fullText = appendChunk(fullText, content);
-              console.log("Chunk:", JSON.stringify(content));
-
-              // 🔄 Live update UI
               setSessions((prev) =>
                 prev.map((s) =>
                   s.id === chatId
@@ -601,149 +610,46 @@ function ChatBoard() {
               );
             }
           } catch (err) {
-            console.warn("⚠️ Stream JSON parse skipped:", dataStr);
+            console.warn("stream parse error", dataStr);
           }
         }
       }
-
-      console.log(
-        "📘 Stream finished. Got answer from docs:",
-        gotAnswerFromDocs,
-      );
-
-      // --- SMARTER FALLBACK DECISION ---
-      // Only call the completions fallback when the docs stream did not provide
-      // a meaningful answer (empty / very short / or an explicit "I don't know").
-      const trimmed = fullText.trim();
-      const looksUnhelpful =
-        trimmed.length === 0 ||
-        trimmed.length < 40 ||
-        /i don.?t know|no results|no relevant/i.test(trimmed.toLowerCase());
-
-      const fallbackNeeded = !gotAnswerFromDocs && looksUnhelpful;
-
-      if (fallbackNeeded) {
-        console.log("🤖 Fallback to OpenAI (reason: docs empty/unhelpful)...");
-
-        const systemPrompt = {
-          role: "system",
-          content:
-            "You are a helpful assistant. If no document info is found, answer normally.",
-        };
-
-        // use sessionsRef to ensure we read the latest session messages (including the assistant placeholder)
-        const activeMessages =
-          sessionsRef.current.find((s) => s.id === activeSessionId)?.messages ||
-          [];
-
-        const formattedMessages = [
-          systemPrompt,
-          ...activeMessages.map((m) => ({ role: m.role, content: m.content })),
-          { role: "user", content: input },
-        ];
-
-        const aiRes = await fetch(`${API_URL}/v1/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: formattedMessages,
-          }),
-          signal: controllerRef.current?.signal,
-        });
-
-        if (!aiRes.ok) throw new Error(`AI API error: ${aiRes.statusText}`);
-
-        const reader2 = aiRes.body.getReader();
-        const decoder2 = new TextDecoder("utf-8");
-        let openAiText = "";
-
-        while (true) {
-          const { done, value } = await reader2.read();
-          if (done) break;
-          const chunk = decoder2.decode(value, { stream: true });
-          const lines = chunk
-            .split("\n")
-            .filter((line) => line.startsWith("data: "));
-
-          for (const line of lines) {
-            const data = line.replace("data:", "").trim();
-            if (data === "[DONE]") continue;
-
-            try {
-              const json = JSON.parse(data);
-              const content = json.choices?.[0]?.delta?.content;
-              if (content) {
-                // safe append for OpenAI stream too
-                openAiText = appendChunk(openAiText, content);
-
-                // Live update assistant message with the OpenAI stream
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === chatId
-                      ? {
-                          ...s,
-                          messages: s.messages.map((m) =>
-                            m.id === assistantMessage.id
-                              ? { ...m, content: openAiText }
-                              : m,
-                          ),
-                        }
-                      : s,
-                  ),
-                );
-              }
-            } catch {
-              // skip invalid lines
-            }
-          }
-        }
-        console.log("✅ OpenAI response done.");
-        if (openAiText.trim()) {
-          await saveMessageToDB(activeSessionId, "assistant", openAiText);
-        }
-      } else {
-        console.log(
-          "ℹ️ Skipping fallback — docs provided a sufficient answer.",
-        );
-      }
-    } catch (err) {
-      if (
-        err.name === "AbortError" ||
-        err.message.includes("aborted") ||
-        err.message.includes("BodyStreamBuffer")
-      ) {
-        console.warn("⚠️ Stream manually stopped by user.");
-        return; // stop silently, no error message in chat
-      }
-      console.error("❌ Error during chat:", err);
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === chatId
-            ? {
-                ...s,
-                messages: [
-                  ...(s.messages || []),
-                  {
-                    id: `msg-error-${Date.now()}`,
-                    role: "assistant",
-                    content: `Error: ${err.message}`,
-                  },
-                ],
-              }
-            : s,
-        ),
-      );
-    } finally {
       if (fullText.trim()) {
         await saveMessageToDB(chatId, "assistant", fullText);
       }
+    } catch (err) {
+      if (err.name === "AbortError") {
+        return;
+      }
+      console.error("Chat error:", err);
+    } finally {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    const checkPromptStatus = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/prompt-status`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (data.isLimitReached) {
+          setLimitExpired(true);
+          setLimitMessage(data.message || "Daily prompt limit reached.");
+        } else {
+          setLimitExpired(false);
+          setLimitMessage("");
+        }
+      } catch (error) {
+        console.error("Limit check failed", error);
+      }
+    };
+    if (token) {
+      checkPromptStatus();
+    }
+  }, [token]);
 
   const handleCopy = async (text, id) => {
     try {
@@ -1364,19 +1270,30 @@ function ChatBoard() {
 
         {/* Input area only if chat selected */}
         {activeSession && !isNewConversationMode && (
-          <ChatFooter
-            input={input}
-            setInput={setInput}
-            inputRef={inputRef}
-            adjustTextareaHeight={adjustTextareaHeight}
-            handleKeyPress={handleKeyPress}
-            handleVoiceStart={handleVoiceStart}
-            listening={listening}
-            loading={loading}
-            handleStop={handleStop}
-            handleSend={handleSend}
-            TEXTAREA_MAX_HEIGHT={TEXTAREA_MAX_HEIGHT}
-          />
+          <>
+            {limitExpired && (
+              <ChatLimitModal
+                message={limitMessage}
+                onUpgrade={() => navigate("/pricing")}
+                onClose={() => setLimitExpired(false)}
+              />
+            )}
+
+            <ChatFooter
+              input={input}
+              setInput={setInput}
+              inputRef={inputRef}
+              adjustTextareaHeight={adjustTextareaHeight}
+              handleKeyPress={handleKeyPress}
+              handleVoiceStart={handleVoiceStart}
+              listening={listening}
+              loading={loading}
+              handleStop={handleStop}
+              handleSend={handleSend}
+              TEXTAREA_MAX_HEIGHT={TEXTAREA_MAX_HEIGHT}
+              limitExpired={limitExpired}
+            />
+          </>
         )}
       </div>
 

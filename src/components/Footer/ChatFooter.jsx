@@ -13,7 +13,9 @@ const ChatFooter = ({
   handleStop,
   handleSend,
   TEXTAREA_MAX_HEIGHT,
+  limitExpired,
 }) => {
+  console.log("limitExpired:", limitExpired);
   return (
     <footer
       style={{
@@ -63,6 +65,7 @@ const ChatFooter = ({
 
         <button
           onClick={handleVoiceStart}
+          disabled={limitExpired}
           title={listening ? "Listening..." : "Voice Input"}
           style={{
             width: "38px",
@@ -71,7 +74,8 @@ const ChatFooter = ({
             borderRadius: "50%",
             background: listening ? "#10a37f" : "transparent",
             color: listening ? "#fff" : "#555",
-            cursor: "pointer",
+            cursor: limitExpired ? "not-allowed" : "pointer",
+            opacity: limitExpired ? 0.5 : 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -102,18 +106,19 @@ const ChatFooter = ({
         ) : (
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || limitExpired}
             style={{
               width: "38px",
               height: "38px",
               border: "none",
               borderRadius: "50%",
-              background: input.trim() ? "#202123" : "#d1d5db",
               color: "#fff",
-              cursor: input.trim() ? "pointer" : "not-allowed",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              background: input.trim() && !limitExpired ? "#202123" : "#d1d5db",
+              cursor: input.trim() && !limitExpired ? "pointer" : "not-allowed",
+              opacity: limitExpired ? 0.5 : 1,
             }}
           >
             <FaPaperPlane size={14} />
