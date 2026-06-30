@@ -268,7 +268,17 @@ const Login = () => {
       {googleLoading && (
         <div className="google-loader-overlay">
           <div className="google-loader-card">
-            <h3>Signing you in...</h3>
+            <img
+              src="/NVlogo.jpg"
+              alt="NewVision"
+              className="google-loader-logo"
+            />
+            <div className="google-loader-spinner" />
+            <h3 className="google-loader-title">Signing you in</h3>
+            <p className="google-loader-text">
+              Authenticating with Google
+              <span className="loading-dots"></span>
+            </p>
           </div>
         </div>
       )}
