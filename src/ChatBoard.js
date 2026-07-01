@@ -16,6 +16,7 @@ import {
   FaShare,
   FaRedo,
   FaCheck,
+  FaArrowDown,
 } from "react-icons/fa";
 
 import { BsThreeDots } from "react-icons/bs";
@@ -76,6 +77,8 @@ function ChatBoard() {
   const controllerRef = useRef(null);
   const userMenuRef = useRef(null);
   const footerMenuRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const handleLogout = () => {
     sessionStorage.removeItem("isAuthenticated");
@@ -349,7 +352,21 @@ function ChatBoard() {
   // Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollToBottom(false);
   }, [sessions, activeSessionId]);
+
+  const handleMessagesScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const isAtBottom =
+      container.scrollTop + container.clientHeight >=
+      container.scrollHeight - 40;
+    setShowScrollToBottom(!isAtBottom);
+  };
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollToBottom(false);
+  };
 
   // ensure textarea height matches content when input or active session changes
   useEffect(() => {
@@ -906,7 +923,10 @@ function ChatBoard() {
 
         <div
           className="chat-messages"
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
           style={{
+            position: "relative",
             flex: 1,
             overflowY: "auto",
             padding: "1rem",
@@ -918,56 +938,8 @@ function ChatBoard() {
             <ChatLoader text="Loading conversations..." />
           ) : isOpeningChat ? (
             <ChatLoader text="Loading chat..." />
-          ) : !activeSession && !pendingChat ? (
-            <div className="empty-chat">
-              <div className="empty-chat-content">
-                <h2>Hi, {userName?.split(" ")[0] || "User"}! 👋</h2>
-                <h4> What’s on your mind today?</h4>
-
-                <div className="chat-placeholder">
-                  <div style={{ textAlign: "center", fontSize: "1.2rem" }}>
-                    <strong>
-                      Select a new chat to start the conversation.
-                    </strong>
-                  </div>
-                  <div className="suggestion-buttons">
-                    <button onClick={() => handleSuggestion("Create an image")}>
-                      Create an image
-                    </button>
-                    <button
-                      onClick={() => handleSuggestion("Simplify a topic")}
-                    >
-                      Simplify a topic
-                    </button>
-                    <button
-                      onClick={() => handleSuggestion("Write a first draft")}
-                    >
-                      Write a first draft
-                    </button>
-                    <button onClick={() => handleSuggestion("Improve writing")}>
-                      Improve writing
-                    </button>
-                    <button onClick={() => handleSuggestion("Draft an email")}>
-                      Draft an email
-                    </button>
-                    <button
-                      onClick={() => handleSuggestion("Predict the future")}
-                    >
-                      Predict the future
-                    </button>
-                    <button onClick={() => handleSuggestion("Get advice")}>
-                      Get advice
-                    </button>
-                    <button
-                      onClick={() => handleSuggestion("Improve communication")}
-                    >
-                      Improve communication
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : pendingChat ||
+          ) : !activeSession ||
+            pendingChat ||
             (isNewConversationMode &&
               activeSession &&
               activeSession.messages.length === 0) ? (
@@ -1034,22 +1006,77 @@ function ChatBoard() {
                       background: "transparent",
                     }}
                   />
-
-                  <FaMicrophone />
+                  <button
+                    disabled={limitExpired}
+                    style={{
+                      width: "38px",
+                      height: "38px",
+                      border: "none",
+                      borderRadius: "50%",
+                      background: listening ? "#10a37f" : "transparent",
+                      color: listening ? "#fff" : "#555",
+                      cursor: limitExpired ? "not-allowed" : "pointer",
+                      opacity: limitExpired ? 0.5 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "18px",
+                    }}
+                  >
+                    <FaMicrophone />
+                  </button>
 
                   <button
                     onClick={handleSend}
+                    disabled={!input.trim() || limitExpired}
                     style={{
+                      width: "38px",
+                      height: "38px",
                       border: "none",
-                      background: "#000",
-                      color: "#fff",
                       borderRadius: "50%",
-                      width: "42px",
-                      height: "42px",
-                      cursor: "pointer",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background:
+                        input.trim() && !limitExpired ? "#202123" : "#d1d5db",
+                      cursor:
+                        input.trim() && !limitExpired
+                          ? "pointer"
+                          : "not-allowed",
+                      opacity: limitExpired ? 0.5 : 1,
                     }}
                   >
                     <FaPaperPlane />
+                  </button>
+                </div>
+                <div className="suggestion-buttons">
+                  <button onClick={() => handleSuggestion("Simplify a topic")}>
+                    Simplify a topic
+                  </button>
+                  <button
+                    onClick={() => handleSuggestion("Write a first draft")}
+                  >
+                    Write a first draft
+                  </button>
+                  <button onClick={() => handleSuggestion("Improve writing")}>
+                    Improve writing
+                  </button>
+                  <button onClick={() => handleSuggestion("Draft an email")}>
+                    Draft an email
+                  </button>
+                  <button
+                    onClick={() => handleSuggestion("Predict the future")}
+                  >
+                    Predict the future
+                  </button>
+                  <button onClick={() => handleSuggestion("Get advice")}>
+                    Get advice
+                  </button>
+                  <button
+                    onClick={() => handleSuggestion("Improve communication")}
+                  >
+                    Improve communication
                   </button>
                 </div>
               </div>
@@ -1302,6 +1329,16 @@ function ChatBoard() {
             </>
           )}
         </div>
+        {showScrollToBottom && (
+          <button
+            className="scroll-to-bottom-btn"
+            onClick={scrollToBottom}
+            title="Scroll to latest message"
+            type="button"
+          >
+            <FaArrowDown />
+          </button>
+        )}
 
         {/* Input area only if chat selected */}
         {activeSession && !isNewConversationMode && (

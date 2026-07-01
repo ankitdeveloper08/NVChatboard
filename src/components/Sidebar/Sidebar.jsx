@@ -33,6 +33,7 @@ const Sidebar = ({
   limitExpired,
 }) => {
   const { user } = useAuth();
+   const API_URL = process.env.REACT_APP_RAG_API_URL;
   return (
     <>
       {/* Expanded Sidebar */}
@@ -59,7 +60,7 @@ const Sidebar = ({
           )}
 
           <button
-            disabled={limitExpired}
+            // disabled={limitExpired}
             className="new-chat-btn"
             onClick={createNewChat}
           >
@@ -169,7 +170,7 @@ const Sidebar = ({
                       onClick={async () => {
                         try {
                           const response = await fetch(
-                            `https://openaiserver-e9lo.onrender.com/api/chats/${s.id}/duplicate`,
+                            `${API_URL}/api/chats/${s.id}/duplicate`,
                             {
                               method: "POST",
                               headers: {
