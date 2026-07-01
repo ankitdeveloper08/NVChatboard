@@ -585,6 +585,12 @@ function ChatBoard() {
         }),
         signal: controllerRef.current.signal,
       });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Chat API error ${response.status}: ${errorText || response.statusText}`,
+        );
+      }
       if (response.status === 429) {
         const error = await response.json();
         setLimitMessage(error.message || "Daily prompt limit reached.");
@@ -603,59 +609,122 @@ function ChatBoard() {
         );
         return;
       }
-      const reader = response.body.getReader();
+      const reader = response.body?.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      let rawStream = "";
+      let sawContent = false;
+      let pendingText = "";
+      let flushTimer = null;
 
-        buffer += decoder.decode(value, {
-          stream: true,
-        });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop();
+      const updateAssistantMessage = (content) => {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === chatId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantMessage.id
+                      ? {
+                          ...m,
+                          content,
+                        }
+                      : m,
+                  ),
+                }
+              : s,
+          ),
+        );
+      };
 
-        for (const part of parts) {
-          if (!part.startsWith("data:")) continue;
-          const dataStr = part.replace("data:", "").trim();
-          if (dataStr === "[DONE]") continue;
+      const flushPending = () => {
+        if (!pendingText) return;
+        fullText = appendChunk(fullText, pendingText);
+        pendingText = "";
+        updateAssistantMessage(fullText);
+      };
 
-          try {
-            const parsed = JSON.parse(dataStr);
-            if (parsed.type === "limit") {
-              if (parsed.remaining === 0) {
-                setLimitMessage("Daily prompt limit reached.");
-                setLimitExpired(true);
-              }
-              continue;
+      const scheduleFlush = () => {
+        if (flushTimer) return;
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          flushPending();
+        }, 50);
+      };
+
+      const processPart = (part) => {
+        if (!part.startsWith("data:")) return;
+        const dataStr = part.replace("data:", "").trim();
+        if (dataStr === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.type === "limit") {
+            if (parsed.remaining === 0) {
+              setLimitMessage("Daily prompt limit reached.");
+              setLimitExpired(true);
             }
-            const content = parsed.content || "";
-            if (content) {
-              fullText = appendChunk(fullText, content);
-              setSessions((prev) =>
-                prev.map((s) =>
-                  s.id === chatId
-                    ? {
-                        ...s,
-                        messages: s.messages.map((m) =>
-                          m.id === assistantMessage.id
-                            ? {
-                                ...m,
-                                content: fullText,
-                              }
-                            : m,
-                        ),
-                      }
-                    : s,
-                ),
-              );
-            }
-          } catch (err) {
-            console.warn("stream parse error", dataStr);
+            return;
+          }
+
+          const content = parsed.content || parsed.answer || parsed.output || "";
+          if (content) {
+            sawContent = true;
+            pendingText = appendChunk(pendingText, content);
+            scheduleFlush();
+          }
+        } catch (err) {
+          console.warn("stream parse error", dataStr);
+        }
+      };
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const textChunk = decoder.decode(value, {
+            stream: true,
+          });
+          rawStream += textChunk;
+          buffer += textChunk;
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop();
+
+          for (const part of parts) {
+            processPart(part);
           }
         }
+
+        if (buffer.trim()) {
+          processPart(buffer);
+        }
       }
+
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      flushPending();
+
+      if (!sawContent) {
+        const fallbackText = rawStream.trim() || (await response.text()).trim();
+        let fallbackContent = fallbackText;
+
+        try {
+          const parsed = JSON.parse(fallbackText);
+          fallbackContent =
+            parsed.content || parsed.answer || parsed.output || parsed.message || JSON.stringify(parsed);
+        } catch (err) {
+          // not JSON, use raw text as fallback
+        }
+
+        if (fallbackContent) {
+          fullText = appendChunk(fullText, fallbackContent);
+          updateAssistantMessage(fullText);
+        }
+      }
+
       if (fullText.trim()) {
         await saveMessageToDB(chatId, "assistant", fullText);
       }
@@ -1138,9 +1207,7 @@ function ChatBoard() {
                                             )
                                           }
                                         >
-                                          {copiedId === copyId
-                                            ? "Copied!"
-                                            : "Copy"}
+                                          {copiedId === copyId ? "Copied!" : "Copy"}
                                         </button>
 
                                         <SyntaxHighlighter
@@ -1174,17 +1241,10 @@ function ChatBoard() {
                           ) : (
                             loading &&
                             i === activeSession.messages.length - 1 && (
-                              <div
-                                style={{
-                                  fontStyle: "italic",
-                                  color: "#666",
-                                  background: "#fff",
-                                  padding: "10px 14px",
-                                  borderRadius: "12px",
-                                  boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-                                }}
-                              >
-                                Typing...
+                              <div className="typing-indicator">
+                                <div className="typing-dot" />
+                                <div className="typing-dot" />
+                                <div className="typing-dot" />
                               </div>
                             )
                           )}
