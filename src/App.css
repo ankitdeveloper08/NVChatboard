@@ -242,12 +242,10 @@ html, body, #root {
 .msg,
 .message-bubble {
   display: block; /* force block flow */
-  background: #fff;
   color: #222;
   padding: 12px 16px;
   margin-bottom: 12px;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   line-height: 1.45;
   max-width: 100%;
   width: auto;
@@ -265,14 +263,12 @@ html, body, #root {
   align-self: flex-end;
   background: #202123;
   color: #fff;
-  border-radius: 18px 18px 4px 18px;
 }
 
 .message.assistant,
 .msg.assistant,
 .message.assistant {
   align-self: flex-start;
-  background: #fff;
   color: #222;
   border-radius: 18px 18px 18px 4px;
 }
@@ -627,6 +623,7 @@ button[disabled] {
 /* Avoid big gaps between consecutive Markdown blocks */
 .message.assistant * + * {
   margin-top: 1px !important;
+  border-radius: 10px;
 }
 .profile-overlay {
   position: fixed;
