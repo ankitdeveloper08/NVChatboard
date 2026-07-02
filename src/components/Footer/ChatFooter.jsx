@@ -14,6 +14,7 @@ const ChatFooter = ({
   handleSend,
   TEXTAREA_MAX_HEIGHT,
   limitExpired,
+  promptLimitReached,
 }) => {
   console.log("limitExpired:", limitExpired);
   return (
@@ -106,7 +107,7 @@ const ChatFooter = ({
         ) : (
           <button
             onClick={handleSend}
-            disabled={!input.trim() || limitExpired}
+            disabled={!input.trim() || limitExpired || promptLimitReached}
             style={{
               width: "38px",
               height: "38px",
@@ -116,9 +117,15 @@ const ChatFooter = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: input.trim() && !limitExpired ? "#202123" : "#d1d5db",
-              cursor: input.trim() && !limitExpired ? "pointer" : "not-allowed",
-              opacity: limitExpired ? 0.5 : 1,
+              background:
+                input.trim() && !limitExpired && !promptLimitReached
+                  ? "#202123"
+                  : "#d1d5db",
+              cursor:
+                input.trim() && !limitExpired && !promptLimitReached
+                  ? "pointer"
+                  : "not-allowed",
+              opacity: limitExpired || promptLimitReached ? 0.5 : 1,
             }}
           >
             <FaPaperPlane size={14} />

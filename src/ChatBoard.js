@@ -33,6 +33,7 @@ import Sidebar from "./components/Sidebar/Sidebar";
 import DeleteConfirmationModal from "./components/Modals/DeleteConfirmationModal";
 import ChatLoader from "./components/Modals/ChatLoader";
 import ChatLimitModal from "./components/Modals/ChatLimitModal";
+import ChatPromptLimitModal from "./components/Modals/ChatPromptLimitModal";
 import MainLoaderModal from "./components/Modals/MainLoaderModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
@@ -73,6 +74,7 @@ function ChatBoard() {
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [limitExpired, setLimitExpired] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
+  const [showPromptLimitModal, setShowPromptLimitModal] = useState(false);
   const moreMenuRef = useRef(null);
   const chatEndRef = useRef(null);
   const controllerRef = useRef(null);
@@ -378,6 +380,25 @@ function ChatBoard() {
     (s) => String(s.id) === String(activeSessionId),
   );
 
+  const PROMPT_LIMIT_PER_CHAT = 11;
+  const currentChatPromptCount = activeSession?.messages?.filter(
+    (m) => m.role === "user",
+  )?.length || 0;
+
+  // Show the prompt limit banner when the next question would exceed the
+  // allowed number of chat prompts for this conversation.
+  const promptLimitReached =
+    currentChatPromptCount >= PROMPT_LIMIT_PER_CHAT - 1 &&
+    !limitExpired;
+
+  useEffect(() => {
+    if (promptLimitReached) {
+      setShowPromptLimitModal(true);
+    } else {
+      setShowPromptLimitModal(false);
+    }
+  }, [promptLimitReached, limitExpired]);
+
   const createNewChat = () => {
     setActiveSessionId(null);
     setInput("");
@@ -477,6 +498,10 @@ function ChatBoard() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
+    if (promptLimitReached) {
+      setShowPromptLimitModal(true);
+      return;
+    }
     const question = input;
     setIsNewConversationMode(false);
     try {
@@ -1431,6 +1456,15 @@ function ChatBoard() {
                 />
               )}
 
+              <ChatPromptLimitModal
+                isOpen={showPromptLimitModal}
+                onClose={() => setShowPromptLimitModal(false)}
+                onNewChat={() => {
+                  setShowPromptLimitModal(false);
+                  createNewChat();
+                }}
+              />
+
               <ChatFooter
                 input={input}
                 setInput={setInput}
@@ -1444,6 +1478,7 @@ function ChatBoard() {
                 handleSend={handleSend}
                 TEXTAREA_MAX_HEIGHT={TEXTAREA_MAX_HEIGHT}
                 limitExpired={limitExpired}
+                promptLimitReached={promptLimitReached}
               />
             </>
           )}
