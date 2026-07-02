@@ -33,6 +33,7 @@ import Sidebar from "./components/Sidebar/Sidebar";
 import DeleteConfirmationModal from "./components/Modals/DeleteConfirmationModal";
 import ChatLoader from "./components/Modals/ChatLoader";
 import ChatLimitModal from "./components/Modals/ChatLimitModal";
+import MainLoaderModal from "./components/Modals/MainLoaderModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -667,7 +668,8 @@ function ChatBoard() {
             return;
           }
 
-          const content = parsed.content || parsed.answer || parsed.output || "";
+          const content =
+            parsed.content || parsed.answer || parsed.output || "";
           if (content) {
             sawContent = true;
             pendingText = appendChunk(pendingText, content);
@@ -714,7 +716,11 @@ function ChatBoard() {
         try {
           const parsed = JSON.parse(fallbackText);
           fallbackContent =
-            parsed.content || parsed.answer || parsed.output || parsed.message || JSON.stringify(parsed);
+            parsed.content ||
+            parsed.answer ||
+            parsed.output ||
+            parsed.message ||
+            JSON.stringify(parsed);
         } catch (err) {
           // not JSON, use raw text as fallback
         }
@@ -904,557 +910,572 @@ function ChatBoard() {
 
   // --- JSX ---
   return (
-    <div
-      className="app-container"
-      onClick={() => {
-        setOpenMenuId(null);
-        setShowUserMenu(false);
-      }}
-    >
-      {/* Sidebar */}
-      <Sidebar
-        isSidebarCollapsed={isSidebarCollapsed}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
-        createNewChat={createNewChat}
-        showSearch={showSearch}
-        setShowSearch={setShowSearch}
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        openChat={openChat}
-        openMenuId={openMenuId}
-        setOpenMenuId={setOpenMenuId}
-        editingId={editingId}
-        setEditingId={setEditingId}
-        editingValue={editingValue}
-        setEditingValue={setEditingValue}
-        renameChat={renameChat}
-        token={token}
-        setSessions={setSessions}
-        setActiveSessionId={setActiveSessionId}
-        setDeleteTargetId={setDeleteTargetId}
-        userName={userName}
-        setShowFooterMenu={setShowFooterMenu}
-        deletingChatId={deletingChatId}
-        setDeletingChatId={setDeletingChatId}
-        limitExpired={limitExpired}
-      />
-
-      {/* Main Chat Area */}
+    <>
+      {isChatLoading && (
+        <div>
+          <MainLoaderModal />
+        </div>
+      )}
       <div
-        className="chat-area"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          marginLeft: isSidebarCollapsed ? "48px" : "0", // Space for collapsed toggle button
-          transition: "margin-left 0.3s ease",
-          background: "#f4f6f9", // Light background for chat area only
-          position: "relative", // make this the anchor for the fixed button area
+        className="app-container"
+        onClick={() => {
+          setOpenMenuId(null);
+          setShowUserMenu(false);
         }}
       >
-        <header
-          className="header"
-          style={{
-            padding: "1rem",
-            borderBottom: "1px solid #e5e5e5",
-            backgroundColor: "#fff",
-          }}
-        >
-          <div
-            style={{
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-            }}
-          >
-            <strong
-              style={{
-                height: "40px",
-                lineHeight: "40px",
-                color: "#5b6670",
-                fontSize: "20px",
-                fontWeight: "700",
-              }}
-            >
-              {" "}
-              NV | Assistant
-              <img
-                src="/NVlg.ico"
-                alt="NV Logo"
-                style={{
-                  width: "32px",
-                  height: "32px",
-                }}
-              />
-            </strong>
-          </div>
-        </header>
+        {/* Sidebar */}
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+          createNewChat={createNewChat}
+          showSearch={showSearch}
+          setShowSearch={setShowSearch}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          openChat={openChat}
+          openMenuId={openMenuId}
+          setOpenMenuId={setOpenMenuId}
+          editingId={editingId}
+          setEditingId={setEditingId}
+          editingValue={editingValue}
+          setEditingValue={setEditingValue}
+          renameChat={renameChat}
+          token={token}
+          setSessions={setSessions}
+          setActiveSessionId={setActiveSessionId}
+          setDeleteTargetId={setDeleteTargetId}
+          userName={userName}
+          setShowFooterMenu={setShowFooterMenu}
+          deletingChatId={deletingChatId}
+          setDeletingChatId={setDeletingChatId}
+          limitExpired={limitExpired}
+        />
 
+        {/* Main Chat Area */}
         <div
-          className="chat-messages"
-          ref={messagesContainerRef}
-          onScroll={handleMessagesScroll}
+          className="chat-area"
           style={{
-            position: "relative",
             flex: 1,
-            overflowY: "auto",
-            padding: "1rem",
             display: "flex",
             flexDirection: "column",
+            marginLeft: isSidebarCollapsed ? "48px" : "0", // Space for collapsed toggle button
+            transition: "margin-left 0.3s ease",
+            background: "#f4f6f9", // Light background for chat area only
+            position: "relative", // make this the anchor for the fixed button area
           }}
         >
-          {isChatLoading ? (
-            <ChatLoader text="Loading conversations..." />
-          ) : isOpeningChat ? (
-            <ChatLoader text="Loading chat..." />
-          ) : !activeSession ||
-            pendingChat ||
-            (isNewConversationMode &&
-              activeSession &&
-              activeSession.messages.length === 0) ? (
-            <>
-              <div
+          <header
+            className="header"
+            style={{
+              padding: "1rem",
+              borderBottom: "1px solid #e5e5e5",
+              backgroundColor: "#fff",
+            }}
+          >
+            <div
+              style={{
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "1rem",
+              }}
+            >
+              <strong
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexDirection: "column",
+                  height: "40px",
+                  lineHeight: "40px",
+                  color: "#5b6670",
+                  fontSize: "20px",
+                  fontWeight: "700",
                 }}
               >
-                <h1
+                {" "}
+                NV | Assistant
+                <img
+                  src="/NVlg.ico"
+                  alt="NV Logo"
                   style={{
-                    fontSize: "42px",
-                    marginBottom: "30px",
-                    fontWeight: "500",
+                    width: "32px",
+                    height: "32px",
                   }}
-                >
-                  Hi, {userName?.split(" ")[0] || "User"}!
-                </h1>
-                <h1
-                  style={{
-                    fontSize: "42px",
-                    marginBottom: "30px",
-                    fontWeight: "500",
-                  }}
-                >
-                  What’s on your mind today?
-                </h1>
+                />
+              </strong>
+            </div>
+          </header>
 
+          <div
+            className="chat-messages"
+            ref={messagesContainerRef}
+            onScroll={handleMessagesScroll}
+            style={{
+              position: "relative",
+              flex: 1,
+              overflowY: "auto",
+              padding: "1rem",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {isOpeningChat ? (
+              <ChatLoader text="Loading chat..." />
+            ) : !activeSession ||
+              pendingChat ||
+              (isNewConversationMode &&
+                activeSession &&
+                activeSession.messages.length === 0) ? (
+              <>
                 <div
                   style={{
-                    width: "70%",
-                    maxWidth: "900px",
-                    background: "#fff",
-                    border: "1px solid #ddd",
-                    borderRadius: "30px",
-                    padding: "12px 20px",
+                    width: "100%",
+                    height: "100%",
                     display: "flex",
+                    justifyContent: "center",
                     alignItems: "center",
-                    gap: "10px",
-                    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+                    flexDirection: "column",
                   }}
                 >
-                  {/* <FaPlus /> */}
+                  <h1
+                    style={{
+                      fontSize: "42px",
+                      marginBottom: "30px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Hi, {userName?.split(" ")[0] || "User"}!
+                  </h1>
+                  <h1
+                    style={{
+                      fontSize: "42px",
+                      marginBottom: "30px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    What’s on your mind today?
+                  </h1>
 
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSend();
-                      }
-                    }}
-                    placeholder="Ask anything"
-                    style={{
-                      flex: 1,
-                      border: "none",
-                      outline: "none",
-                      fontSize: "18px",
-                      background: "transparent",
-                    }}
-                  />
-                  <button
-                    disabled={limitExpired}
-                    style={{
-                      width: "38px",
-                      height: "38px",
-                      border: "none",
-                      borderRadius: "50%",
-                      background: listening ? "#10a37f" : "transparent",
-                      color: listening ? "#fff" : "#555",
-                      cursor: limitExpired ? "not-allowed" : "pointer",
-                      opacity: limitExpired ? 0.5 : 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "18px",
-                    }}
-                  >
-                    <FaMicrophone />
-                  </button>
-
-                  <button
-                    onClick={handleSend}
-                    disabled={!input.trim() || limitExpired}
-                    style={{
-                      width: "38px",
-                      height: "38px",
-                      border: "none",
-                      borderRadius: "50%",
-                      color: "#fff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background:
-                        input.trim() && !limitExpired ? "#202123" : "#d1d5db",
-                      cursor:
-                        input.trim() && !limitExpired
-                          ? "pointer"
-                          : "not-allowed",
-                      opacity: limitExpired ? 0.5 : 1,
-                    }}
-                  >
-                    <FaPaperPlane />
-                  </button>
-                </div>
-                <div className="suggestion-buttons">
-                  <button onClick={() => handleSuggestion("Simplify a topic")}>
-                    Simplify a topic
-                  </button>
-                  <button
-                    onClick={() => handleSuggestion("Write a first draft")}
-                  >
-                    Write a first draft
-                  </button>
-                  <button onClick={() => handleSuggestion("Improve writing")}>
-                    Improve writing
-                  </button>
-                  <button onClick={() => handleSuggestion("Draft an email")}>
-                    Draft an email
-                  </button>
-                  <button
-                    onClick={() => handleSuggestion("Predict the future")}
-                  >
-                    Predict the future
-                  </button>
-                  <button onClick={() => handleSuggestion("Get advice")}>
-                    Get advice
-                  </button>
-                  <button
-                    onClick={() => handleSuggestion("Improve communication")}
-                  >
-                    Improve communication
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {activeSession.messages.map((msg, i) => {
-                let codeBlockCounter = 0;
-                return (
                   <div
                     style={{
-                      width: "100%",
-                      maxWidth: "850px", // same as input box
-                      margin: "0 auto",
+                      width: "70%",
+                      maxWidth: "900px",
+                      background: "#fff",
+                      border: "1px solid #ddd",
+                      borderRadius: "30px",
+                      padding: "12px 20px",
                       display: "flex",
-                      justifyContent:
-                        msg.role === "user" ? "flex-end" : "flex-start",
+                      alignItems: "center",
+                      gap: "10px",
+                      boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
                     }}
                   >
-                    <div
-                      key={msg.id || i}
-                      className={`message ${msg.role}`}
+                    {/* <FaPlus /> */}
+
+                    <input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSend();
+                        }
+                      }}
+                      placeholder="Ask anything"
                       style={{
-                        position: "relative",
-                        width: "fit-content",
-                        maxWidth: msg.role === "user" ? "60%" : "100%",
-                        wordBreak: "break-word",
+                        flex: 1,
+                        border: "none",
+                        outline: "none",
+                        fontSize: "18px",
+                        background: "transparent",
+                      }}
+                    />
+                    <button
+                      disabled={limitExpired}
+                      style={{
+                        width: "38px",
+                        height: "38px",
+                        border: "none",
+                        borderRadius: "50%",
+                        background: listening ? "#10a37f" : "transparent",
+                        color: listening ? "#fff" : "#555",
+                        cursor: limitExpired ? "not-allowed" : "pointer",
+                        opacity: limitExpired ? 0.5 : 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "18px",
                       }}
                     >
-                      {msg.role === "assistant" ? (
-                        <>
-                          {msg.content ? (
-                            <ReactMarkdown
-                              children={msg.content}
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code({
-                                  inline,
-                                  className,
-                                  children,
-                                  ...props
-                                }) {
-                                  const match = /language-(\w+)/.exec(
-                                    className || "",
-                                  );
+                      <FaMicrophone />
+                    </button>
 
-                                  if (!inline && match) {
-                                    const copyId = `${msg.id || i}-${codeBlockCounter}`;
-                                    codeBlockCounter += 1;
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() || limitExpired}
+                      style={{
+                        width: "38px",
+                        height: "38px",
+                        border: "none",
+                        borderRadius: "50%",
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background:
+                          input.trim() && !limitExpired ? "#202123" : "#d1d5db",
+                        cursor:
+                          input.trim() && !limitExpired
+                            ? "pointer"
+                            : "not-allowed",
+                        opacity: limitExpired ? 0.5 : 1,
+                      }}
+                    >
+                      <FaPaperPlane />
+                    </button>
+                  </div>
+                  <div className="suggestion-buttons">
+                    <button
+                      onClick={() => handleSuggestion("Simplify a topic")}
+                    >
+                      Simplify a topic
+                    </button>
+                    <button
+                      onClick={() => handleSuggestion("Write a first draft")}
+                    >
+                      Write a first draft
+                    </button>
+                    <button onClick={() => handleSuggestion("Improve writing")}>
+                      Improve writing
+                    </button>
+                    <button onClick={() => handleSuggestion("Draft an email")}>
+                      Draft an email
+                    </button>
+                    <button
+                      onClick={() => handleSuggestion("Predict the future")}
+                    >
+                      Predict the future
+                    </button>
+                    <button onClick={() => handleSuggestion("Get advice")}>
+                      Get advice
+                    </button>
+                    <button
+                      onClick={() => handleSuggestion("Improve communication")}
+                    >
+                      Improve communication
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {activeSession.messages.map((msg, i) => {
+                  let codeBlockCounter = 0;
+                  return (
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: "850px", // same as input box
+                        margin: "0 auto",
+                        display: "flex",
+                        justifyContent:
+                          msg.role === "user" ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <div
+                        key={msg.id || i}
+                        className={`message ${msg.role}`}
+                        style={{
+                          position: "relative",
+                          width: "fit-content",
+                          maxWidth: msg.role === "user" ? "60%" : "100%",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {msg.role === "assistant" ? (
+                          <>
+                            {msg.content ? (
+                              <ReactMarkdown
+                                children={msg.content}
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  code({
+                                    inline,
+                                    className,
+                                    children,
+                                    ...props
+                                  }) {
+                                    const match = /language-(\w+)/.exec(
+                                      className || "",
+                                    );
+
+                                    if (!inline && match) {
+                                      const copyId = `${msg.id || i}-${codeBlockCounter}`;
+                                      codeBlockCounter += 1;
+
+                                      return (
+                                        <div style={{ position: "relative" }}>
+                                          <button
+                                            className="copy-btn"
+                                            onClick={() =>
+                                              handleCopy(
+                                                String(children).trim(),
+                                                copyId,
+                                              )
+                                            }
+                                          >
+                                            {copiedId === copyId
+                                              ? "Copied!"
+                                              : "Copy"}
+                                          </button>
+
+                                          <SyntaxHighlighter
+                                            style={atomOneDark}
+                                            language={match[1]}
+                                            PreTag="div"
+                                            {...props}
+                                          >
+                                            {String(children).replace(
+                                              /\n$/,
+                                              "",
+                                            )}
+                                          </SyntaxHighlighter>
+                                        </div>
+                                      );
+                                    }
 
                                     return (
-                                      <div style={{ position: "relative" }}>
-                                        <button
-                                          className="copy-btn"
-                                          onClick={() =>
-                                            handleCopy(
-                                              String(children).trim(),
-                                              copyId,
-                                            )
-                                          }
-                                        >
-                                          {copiedId === copyId ? "Copied!" : "Copy"}
-                                        </button>
-
-                                        <SyntaxHighlighter
-                                          style={atomOneDark}
-                                          language={match[1]}
-                                          PreTag="div"
-                                          {...props}
-                                        >
-                                          {String(children).replace(/\n$/, "")}
-                                        </SyntaxHighlighter>
-                                      </div>
+                                      <code
+                                        style={{
+                                          background: "#eee",
+                                          padding: "2px 5px",
+                                          borderRadius: "4px",
+                                          fontFamily: "monospace",
+                                        }}
+                                        {...props}
+                                      >
+                                        {children}
+                                      </code>
                                     );
-                                  }
-
-                                  return (
-                                    <code
-                                      style={{
-                                        background: "#eee",
-                                        padding: "2px 5px",
-                                        borderRadius: "4px",
-                                        fontFamily: "monospace",
-                                      }}
-                                      {...props}
-                                    >
-                                      {children}
-                                    </code>
-                                  );
-                                },
-                              }}
-                            />
-                          ) : (
-                            loading &&
-                            i === activeSession.messages.length - 1 && (
-                              <div className="typing-indicator">
-                                <div className="typing-dot" />
-                                <div className="typing-dot" />
-                                <div className="typing-dot" />
-                              </div>
-                            )
-                          )}
-
-                          {/* Action Bar */}
-                          {!(
-                            loading && i === activeSession.messages.length - 1
-                          ) &&
-                            msg.content && (
-                              <div
-                                className="message-actions"
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "12px",
-                                  marginTop: "8px",
-                                  color: "#666",
+                                  },
                                 }}
-                              >
-                                {/* Copy */}
-                                <button
-                                  onClick={() =>
-                                    handleCopy(msg.content, msg.id)
-                                  }
-                                  className="message-action-btn"
-                                  title="Copy"
-                                >
-                                  {copiedId === msg.id ? (
-                                    <FaCheck />
-                                  ) : (
-                                    <FaRegCopy />
-                                  )}
-                                </button>
+                              />
+                            ) : (
+                              loading &&
+                              i === activeSession.messages.length - 1 && (
+                                <div className="typing-indicator">
+                                  <div className="typing-dot" />
+                                  <div className="typing-dot" />
+                                  <div className="typing-dot" />
+                                </div>
+                              )
+                            )}
 
-                                {/* Like */}
-                                <button
-                                  className="message-action-btn"
-                                  title="Like"
-                                  onClick={() => console.log("Liked")}
-                                >
-                                  👍
-                                </button>
-
-                                {/* Dislike */}
-                                <button
-                                  className="message-action-btn"
-                                  title="Dislike"
-                                  onClick={() => console.log("Disliked")}
-                                >
-                                  👎
-                                </button>
-
-                                {/* Share */}
-                                <button
-                                  className="message-action-btn"
-                                  title="Share"
-                                  onClick={() => {
-                                    if (navigator.share) {
-                                      navigator.share({
-                                        text: msg.content,
-                                      });
-                                    } else {
-                                      navigator.clipboard.writeText(
-                                        msg.content,
-                                      );
-                                      alert("Message copied for sharing");
-                                    }
+                            {/* Action Bar */}
+                            {!(
+                              loading && i === activeSession.messages.length - 1
+                            ) &&
+                              msg.content && (
+                                <div
+                                  className="message-actions"
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "12px",
+                                    marginTop: "8px",
+                                    color: "#666",
                                   }}
                                 >
-                                  ↗️
-                                </button>
-
-                                {/* Regenerate */}
-                                <button
-                                  className="message-action-btn"
-                                  title="Regenerate"
-                                  onClick={() => handleSend()}
-                                >
-                                  🔄
-                                </button>
-
-                                {/* More */}
-                                <div
-                                  ref={
-                                    openMoreMenuId === msg.id
-                                      ? moreMenuRef
-                                      : null
-                                  }
-                                  style={{ position: "relative" }}
-                                >
+                                  {/* Copy */}
                                   <button
+                                    onClick={() =>
+                                      handleCopy(msg.content, msg.id)
+                                    }
                                     className="message-action-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenMoreMenuId(
-                                        openMoreMenuId === msg.id
-                                          ? null
-                                          : msg.id,
-                                      );
-                                    }}
+                                    title="Copy"
                                   >
-                                    <BsThreeDots />
+                                    {copiedId === msg.id ? (
+                                      <FaCheck />
+                                    ) : (
+                                      <FaRegCopy />
+                                    )}
                                   </button>
 
-                                  {openMoreMenuId === msg.id && (
-                                    <div
-                                      className="message-more-menu"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {readingId === msg.id ? (
-                                        <button
-                                          className="message-more-item"
-                                          onClick={stopReading}
-                                        >
-                                          ⏹ Stop Reading
-                                        </button>
-                                      ) : (
-                                        <button
-                                          className="message-more-item"
-                                          onClick={() =>
-                                            handleReadAloud(msg.content, msg.id)
-                                          }
-                                        >
-                                          🔊 Read Aloud
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                        </>
-                      ) : (
-                        msg.content
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                                  {/* Like */}
+                                  <button
+                                    className="message-action-btn"
+                                    title="Like"
+                                    onClick={() => console.log("Liked")}
+                                  >
+                                    👍
+                                  </button>
 
-              <div ref={chatEndRef} />
+                                  {/* Dislike */}
+                                  <button
+                                    className="message-action-btn"
+                                    title="Dislike"
+                                    onClick={() => console.log("Disliked")}
+                                  >
+                                    👎
+                                  </button>
+
+                                  {/* Share */}
+                                  <button
+                                    className="message-action-btn"
+                                    title="Share"
+                                    onClick={() => {
+                                      if (navigator.share) {
+                                        navigator.share({
+                                          text: msg.content,
+                                        });
+                                      } else {
+                                        navigator.clipboard.writeText(
+                                          msg.content,
+                                        );
+                                        alert("Message copied for sharing");
+                                      }
+                                    }}
+                                  >
+                                    ↗️
+                                  </button>
+
+                                  {/* Regenerate */}
+                                  <button
+                                    className="message-action-btn"
+                                    title="Regenerate"
+                                    onClick={() => handleSend()}
+                                  >
+                                    🔄
+                                  </button>
+
+                                  {/* More */}
+                                  <div
+                                    ref={
+                                      openMoreMenuId === msg.id
+                                        ? moreMenuRef
+                                        : null
+                                    }
+                                    style={{ position: "relative" }}
+                                  >
+                                    <button
+                                      className="message-action-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMoreMenuId(
+                                          openMoreMenuId === msg.id
+                                            ? null
+                                            : msg.id,
+                                        );
+                                      }}
+                                    >
+                                      <BsThreeDots />
+                                    </button>
+
+                                    {openMoreMenuId === msg.id && (
+                                      <div
+                                        className="message-more-menu"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {readingId === msg.id ? (
+                                          <button
+                                            className="message-more-item"
+                                            onClick={stopReading}
+                                          >
+                                            ⏹ Stop Reading
+                                          </button>
+                                        ) : (
+                                          <button
+                                            className="message-more-item"
+                                            onClick={() =>
+                                              handleReadAloud(
+                                                msg.content,
+                                                msg.id,
+                                              )
+                                            }
+                                          >
+                                            🔊 Read Aloud
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </>
+                        ) : (
+                          msg.content
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div ref={chatEndRef} />
+              </>
+            )}
+          </div>
+          {showScrollToBottom && (
+            <button
+              className="scroll-to-bottom-btn"
+              onClick={scrollToBottom}
+              title="Scroll to latest message"
+              type="button"
+            >
+              <FaArrowDown />
+            </button>
+          )}
+
+          {/* Input area only if chat selected */}
+          {activeSession && !isNewConversationMode && (
+            <>
+              {limitExpired && (
+                <ChatLimitModal
+                  message={limitMessage}
+                  onUpgrade={() => navigate("/pricing")}
+                  onClose={() => setLimitExpired(false)}
+                />
+              )}
+
+              <ChatFooter
+                input={input}
+                setInput={setInput}
+                inputRef={inputRef}
+                adjustTextareaHeight={adjustTextareaHeight}
+                handleKeyPress={handleKeyPress}
+                handleVoiceStart={handleVoiceStart}
+                listening={listening}
+                loading={loading}
+                handleStop={handleStop}
+                handleSend={handleSend}
+                TEXTAREA_MAX_HEIGHT={TEXTAREA_MAX_HEIGHT}
+                limitExpired={limitExpired}
+              />
             </>
           )}
         </div>
-        {showScrollToBottom && (
-          <button
-            className="scroll-to-bottom-btn"
-            onClick={scrollToBottom}
-            title="Scroll to latest message"
-            type="button"
-          >
-            <FaArrowDown />
-          </button>
+
+        {/* Delete confirmation modal */}
+        {deleteTargetId && (
+          <DeleteConfirmationModal
+            deleteTargetId={deleteTargetId}
+            setDeleteTargetId={setDeleteTargetId}
+            handleConfirmDelete={handleConfirmDelete}
+          />
         )}
-
-        {/* Input area only if chat selected */}
-        {activeSession && !isNewConversationMode && (
-          <>
-            {limitExpired && (
-              <ChatLimitModal
-                message={limitMessage}
-                onUpgrade={() => navigate("/pricing")}
-                onClose={() => setLimitExpired(false)}
-              />
-            )}
-
-            <ChatFooter
-              input={input}
-              setInput={setInput}
-              inputRef={inputRef}
-              adjustTextareaHeight={adjustTextareaHeight}
-              handleKeyPress={handleKeyPress}
-              handleVoiceStart={handleVoiceStart}
-              listening={listening}
-              loading={loading}
-              handleStop={handleStop}
-              handleSend={handleSend}
-              TEXTAREA_MAX_HEIGHT={TEXTAREA_MAX_HEIGHT}
-              limitExpired={limitExpired}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Delete confirmation modal */}
-      {deleteTargetId && (
-        <DeleteConfirmationModal
-          deleteTargetId={deleteTargetId}
-          setDeleteTargetId={setDeleteTargetId}
-          handleConfirmDelete={handleConfirmDelete}
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          userName={userName}
+          userEmail={sessionStorage.getItem("userEmail") || ""}
+          userPicture=""
         />
-      )}
-      <ProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        userName={userName}
-        userEmail={sessionStorage.getItem("userEmail") || ""}
-        userPicture=""
-      />
-      <FooterMenu
-        userName={userName}
-        showFooterMenu={showFooterMenu}
-        footerMenuRef={footerMenuRef}
-        menuItemStyle={menuItemStyle}
-        setShowFooterMenu={setShowFooterMenu}
-        setShowProfileModal={setShowProfileModal}
-        handleLogout={handleLogout}
-        width="100%"
-      />
-    </div>
+        <FooterMenu
+          userName={userName}
+          showFooterMenu={showFooterMenu}
+          footerMenuRef={footerMenuRef}
+          menuItemStyle={menuItemStyle}
+          setShowFooterMenu={setShowFooterMenu}
+          setShowProfileModal={setShowProfileModal}
+          handleLogout={handleLogout}
+          width="100%"
+        />
+      </div>
+    </>
   );
 }
 
