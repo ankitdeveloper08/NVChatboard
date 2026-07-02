@@ -12,7 +12,7 @@ const ChatPromptLimitModal = ({
     <div className="prompt-limit-banner">
       <div className="prompt-limit-card">
         <div className="prompt-limit-message">
-          <strong>Conversation limit reached.</strong>
+          <strong> ⚠️ Conversation limit reached.</strong>
           <span>This chat is limited to 10 prompts. Start a new conversation to continue.</span>
         </div>
         <div className="prompt-limit-actions">
@@ -20,7 +20,7 @@ const ChatPromptLimitModal = ({
             Cancel
           </button>
           <button className="prompt-limit-new-chat" onClick={onNewChat}>
-            New Chat
+            New Conversation
           </button>
         </div>
       </div>
