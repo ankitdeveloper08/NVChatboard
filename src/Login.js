@@ -1,23 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import "./Login.css";
+
+const API_URL = process.env.REACT_APP_RAG_API_URL;
 
 const Login = () => {
   const navigate = useNavigate();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
+  // ✅ auto redirect if already logged in
   useEffect(() => {
     const isAuthenticated =
-      localStorage.getItem("isAuthenticated") === "true";
+      sessionStorage.getItem("isAuthenticated") === "true";
 
     if (isAuthenticated) {
       navigate("/chat", { replace: true });
     }
   }, [navigate]);
 
+  // Google script load
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
@@ -26,77 +36,61 @@ const Login = () => {
 
     script.onload = initializeGoogleSignIn;
 
-    script.onerror = () =>
-      setError("Failed to load Google Sign-In service.");
-
     document.head.appendChild(script);
 
     return () => {
       try {
         document.head.removeChild(script);
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
   }, []);
 
-  const decodeJwt = (token) => {
-    try {
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split("")
-          .map(
-            (c) =>
-              "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)
-          )
-          .join("")
-      );
-
-      return JSON.parse(jsonPayload);
-    } catch {
-      return null;
-    }
+  const isValidGmail = (email) => {
+    return /^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(email);
   };
 
-  const handleGoogleCredentialResponse = (response) => {
+  // ---------------- GOOGLE LOGIN ----------------
+  const handleGoogleCredentialResponse = async (response) => {
     try {
-      if (!response?.credential) {
-        setError("Google authentication failed.");
-        return;
-      }
+      setGoogleLoading(true);
+      setError("");
 
-      const payload = decodeJwt(response.credential);
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          credential: response.credential,
+        }),
+      });
 
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem(
-        "userName",
-        payload?.name || "Google User"
-      );
-      localStorage.setItem(
-        "userEmail",
-        payload?.email || ""
-      );
-      localStorage.setItem(
-        "authProvider",
-        "google-oauth"
-      );
+      const data = await res.json();
 
-      navigate("/chat", { replace: true });
-    } catch {
-      setError("Login failed. Please try again.");
+      if (!res.ok) throw new Error(data.message);
+
+      // ✅ IMPORTANT: store FIRST
+      sessionStorage.setItem("isAuthenticated", "true");
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("userName", data.user.name);
+      sessionStorage.setItem("userEmail", data.user.email);
+      sessionStorage.setItem("role", data.user.role);
+
+      window.dispatchEvent(new Event("auth-change"));
+
+      // ✅ force small delay before navigation
+      setTimeout(() => {
+        navigate("/chat", { replace: true });
+      }, 100);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
   const initializeGoogleSignIn = () => {
-    if (!GOOGLE_CLIENT_ID) {
-      setError(
-        "Missing REACT_APP_GOOGLE_CLIENT_ID in environment configuration."
-      );
-      return;
-    }
+    if (!GOOGLE_CLIENT_ID) return;
 
     if (window.google?.accounts?.id) {
       window.google.accounts.id.initialize({
@@ -104,80 +98,101 @@ const Login = () => {
         callback: handleGoogleCredentialResponse,
       });
 
-      const btnContainer = document.getElementById(
-        "google-signin-button"
-      );
+      const btnContainer = document.getElementById("google-signin-button");
 
       if (btnContainer) {
         btnContainer.innerHTML = "";
 
-        window.google.accounts.id.renderButton(
-          btnContainer,
-          {
-            theme: "outline",
-            size: "large",
-            width: "350",
-            text: "signin_with",
-            shape: "pill",
-          }
-        );
+        window.google.accounts.id.renderButton(btnContainer, {
+          theme: "outline",
+          size: "large",
+          width: "350",
+          shape: "pill",
+        });
       }
     }
+  };
+
+  // ---------------- EMAIL LOGIN ----------------
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      if (!email.trim()) return setError("Email is required");
+      if (!isValidGmail(email))
+        return setError("Please enter a valid Gmail address");
+      if (!password.trim()) return setError("Password is required");
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message || "Login failed");
+
+      // ✅ sessionStorage ONLY
+      sessionStorage.setItem("isAuthenticated", "true");
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("userName", data.user?.name);
+      sessionStorage.setItem("userEmail", data.user?.email);
+
+      navigate("/chat", { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") handleLogin();
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "12px",
+    marginBottom: "14px",
+    fontSize: "15px",
+    outline: "none",
   };
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, #f5f7fa 0%, #e4eaf1 100%)",
+        background: "linear-gradient(135deg,#f8fafc,#eef2ff)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: "20px",
+        padding: "24px",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "450px",
+          maxWidth: "460px",
           background: "#fff",
-          borderRadius: "20px",
+          borderRadius: "24px",
           padding: "40px",
-          boxShadow:
-            "0 20px 50px rgba(0,0,0,0.08)",
-          textAlign: "center",
+          boxShadow: "0 20px 60px rgba(0,0,0,.08)",
         }}
       >
-        {/* Logo */}
         <img
           src="/NVlogo.jpg"
           alt="NewVision"
-          style={{
-            width: "140px",
-            marginBottom: "25px",
-          }}
+          style={{ width: "150px", display: "block", margin: "0 auto 20px" }}
         />
 
-        <h1
-          style={{
-            fontSize: "2rem",
-            fontWeight: 700,
-            marginBottom: "10px",
-            color: "#111827",
-          }}
-        >
-          Welcome Back
-        </h1>
+        <h1 style={{ textAlign: "center" }}>Welcome back</h1>
 
-        <p
-          style={{
-            color: "#6b7280",
-            marginBottom: "30px",
-            fontSize: "0.95rem",
-          }}
-        >
-          Sign in to continue to NewVision AI Assistant
+        <p style={{ textAlign: "center", color: "#6b7280" }}>
+          Sign in to continue to Sidekick
         </p>
 
         {error && (
@@ -187,45 +202,86 @@ const Login = () => {
               color: "#dc2626",
               padding: "12px",
               borderRadius: "10px",
-              marginBottom: "20px",
-              fontSize: "0.9rem",
+              marginBottom: "15px",
             }}
           >
             {error}
           </div>
         )}
 
-        <div
-          id="google-signin-button"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            minHeight: "44px",
-          }}
+        <input
+          style={inputStyle}
+          type="email"
+          placeholder="Gmail address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={handleKeyPress}
         />
 
-        {loading && (
-          <p
-            style={{
-              marginTop: "15px",
-              color: "#6b7280",
-            }}
-          >
-            Signing in...
-          </p>
-        )}
+        <input
+          style={inputStyle}
+          type={showPassword ? "text" : "password"}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={handleKeyPress}
+        />
 
-        <div
+        <button
+          onClick={() => setShowPassword(!showPassword)}
           style={{
-            marginTop: "35px",
-            fontSize: "0.85rem",
-            color: "#9ca3af",
+            marginBottom: "10px",
+            background: "none",
+            border: "none",
+            color: "#2563eb",
+            cursor: "pointer",
           }}
         >
-          By continuing, you agree to use your Google account
-          for authentication.
+          {showPassword ? "Hide" : "Show"}
+        </button>
+
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "14px",
+            borderRadius: "12px",
+            background: "#2563eb",
+            color: "#fff",
+            border: "none",
+          }}
+        >
+          {loading ? "Signing in..." : "Continue"}
+        </button>
+
+        <div style={{ marginTop: "20px", textAlign: "center" }}>
+          <Link to="/register">Sign up</Link>
         </div>
+
+        <div
+          id="google-signin-button"
+          style={{ display: "flex", justifyContent: "center", marginTop: 20 }}
+        />
       </div>
+
+      {googleLoading && (
+        <div className="google-loader-overlay">
+          <div className="google-loader-card">
+            <img
+              src="/NVlogo.jpg"
+              alt="NewVision"
+              className="google-loader-logo"
+            />
+            <div className="google-loader-spinner" />
+            <h3 className="google-loader-title">Signing you in</h3>
+            <p className="google-loader-text">
+              Authenticating with Google
+              <span className="loading-dots"></span>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

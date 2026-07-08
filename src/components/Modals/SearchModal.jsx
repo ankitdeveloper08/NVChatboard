@@ -1,28 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaSearch, FaTimes } from "react-icons/fa";
+import { FaComments, FaSearch, FaTimes } from "react-icons/fa";
 
 const SearchModal = ({ sessions, onSelect, onClose }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const modalRef = useRef(null);
 
-  // ✅ Improved outside click detection
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // If click is on the modal or its children, do nothing
       if (modalRef.current && modalRef.current.contains(e.target)) return;
-
-      // Ignore clicks on scrollbar or transitions
-      if (e.target.closest(".modal-ignore")) return;
-
       onClose();
     };
 
-    document.addEventListener("mousedown", handleClickOutside, true);
-    return () => document.removeEventListener("mousedown", handleClickOutside, true);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
-
   const filtered = sessions.filter((s) =>
-    s.title.toLowerCase().includes(searchTerm.toLowerCase())
+    s.title.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -38,7 +31,6 @@ const SearchModal = ({ sessions, onSelect, onClose }) => {
         zIndex: 2000,
         color: "black",
       }}
-      className="modal-ignore"
     >
       <div
         ref={modalRef}
@@ -120,7 +112,11 @@ const SearchModal = ({ sessions, onSelect, onClose }) => {
                   (e.currentTarget.style.background = "transparent")
                 }
               >
-                {s.title}
+                <FaComments
+                  className="chat-icon"
+                  style={{ marginRight: "10px" }}
+                />
+                <span>{s.title} </span>
               </div>
             ))
           ) : (

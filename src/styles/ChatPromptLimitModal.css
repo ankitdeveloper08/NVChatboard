@@ -1,0 +1,66 @@
+.prompt-limit-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 110px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.prompt-limit-card {
+  pointer-events: all;
+  width: 100%;
+  max-width: 850px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 16px 20px;
+  box-shadow: 0 15px 50px rgba(15, 23, 42, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.prompt-limit-message {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.prompt-limit-message strong {
+  font-size: 16px;
+}
+
+.prompt-limit-message span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.prompt-limit-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.prompt-limit-cancel,
+.prompt-limit-new-chat {
+  border: none;
+  border-radius: 9999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prompt-limit-cancel {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.prompt-limit-new-chat {
+  background: #111827;
+  color: #ffffff;
+}

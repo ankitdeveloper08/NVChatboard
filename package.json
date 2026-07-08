@@ -2,9 +2,10 @@
   "name": "ai-chatboard",
   "version": "1.0.0",
   "private": true,
-  "proxy": "https://openaiservers.onrender.com",
+  "proxy": "https://openaiserver-e9lo.onrender.com",
   "proxy1": "http://127.0.0.1:1234",
   "dependencies": {
+    "axios": "^1.18.1",
     "body-parser": "^2.2.0",
     "bootstrap": "^5.3.8",
     "cors": "^2.8.5",
