@@ -112,6 +112,7 @@ function ChatBoard() {
   // === VOICE: new state + ref (added, doesn't remove any existing code) ===
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
+  const isSuggestionDisabled = true;
 
   // --- auto-resize textarea refs / constants ---
   const inputRef = useRef(null);
@@ -133,27 +134,6 @@ function ChatBoard() {
   const appendChunk = (prev, chunk) => {
     if (!chunk) return prev;
     if (!prev) return chunk;
-
-    // Trim leading spaces on the new chunk if the previous text
-    // doesn’t end with punctuation or whitespace.
-    const prevLast = prev[prev.length - 1];
-    const first = chunk[0];
-
-    // If the last character is a letter and the first is a lowercase letter,
-    // don't add any space — likely a split word.
-    if (/[a-zA-Z0-9]$/.test(prevLast) && /^[a-z0-9]/.test(first)) {
-      return prev + chunk;
-    }
-
-    // If both are normal words but split by tokenization, add a single space
-    if (
-      /\w$/.test(prevLast) &&
-      /^\w/.test(first) &&
-      !/\s$/.test(prev) &&
-      !/^\s/.test(chunk)
-    ) {
-      return prev + " " + chunk;
-    }
 
     return prev + chunk;
   };
@@ -381,15 +361,13 @@ function ChatBoard() {
   );
 
   const PROMPT_LIMIT_PER_CHAT = 11;
-  const currentChatPromptCount = activeSession?.messages?.filter(
-    (m) => m.role === "user",
-  )?.length || 0;
+  const currentChatPromptCount =
+    activeSession?.messages?.filter((m) => m.role === "user")?.length || 0;
 
   // Show the prompt limit banner when the next question would exceed the
   // allowed number of chat prompts for this conversation.
   const promptLimitReached =
-    currentChatPromptCount >= PROMPT_LIMIT_PER_CHAT - 1 &&
-    !limitExpired;
+    currentChatPromptCount >= PROMPT_LIMIT_PER_CHAT - 1 && !limitExpired;
 
   useEffect(() => {
     if (promptLimitReached) {
@@ -675,7 +653,7 @@ function ChatBoard() {
         flushTimer = setTimeout(() => {
           flushTimer = null;
           flushPending();
-        }, 50);
+        }, 20);
       };
 
       const processPart = (part) => {
@@ -889,20 +867,6 @@ function ChatBoard() {
   };
 
   useEffect(() => {
-    const handleOutsideClick = (event) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
-        setOpenMoreMenuId(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleClickOutside = (event) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
         setOpenMoreMenuId(null);
@@ -1065,7 +1029,7 @@ function ChatBoard() {
                       fontWeight: "500",
                     }}
                   >
-                    Hi, {userName?.split(" ")[0] || "User"}!
+                    Welcome, {userName?.split(" ")[0] || "User"}!
                   </h1>
                   <h1
                     style={{
@@ -1156,30 +1120,43 @@ function ChatBoard() {
                   </div>
                   <div className="suggestion-buttons">
                     <button
+                      disabled={isSuggestionDisabled}
                       onClick={() => handleSuggestion("Simplify a topic")}
                     >
                       Simplify a topic
                     </button>
                     <button
+                      disabled={isSuggestionDisabled}
                       onClick={() => handleSuggestion("Write a first draft")}
                     >
                       Write a first draft
                     </button>
-                    <button onClick={() => handleSuggestion("Improve writing")}>
+                    <button
+                      disabled={isSuggestionDisabled}
+                      onClick={() => handleSuggestion("Improve writing")}
+                    >
                       Improve writing
                     </button>
-                    <button onClick={() => handleSuggestion("Draft an email")}>
+                    <button
+                      disabled={isSuggestionDisabled}
+                      onClick={() => handleSuggestion("Draft an email")}
+                    >
                       Draft an email
                     </button>
                     <button
+                      disabled={isSuggestionDisabled}
                       onClick={() => handleSuggestion("Predict the future")}
                     >
                       Predict the future
                     </button>
-                    <button onClick={() => handleSuggestion("Get advice")}>
+                    <button
+                      disabled={isSuggestionDisabled}
+                      onClick={() => handleSuggestion("Get advice")}
+                    >
                       Get advice
                     </button>
                     <button
+                      disabled={isSuggestionDisabled}
                       onClick={() => handleSuggestion("Improve communication")}
                     >
                       Improve communication
@@ -1363,7 +1340,7 @@ function ChatBoard() {
                                   <button
                                     className="message-action-btn"
                                     title="Regenerate"
-                                    onClick={() => handleSend()}
+                                    // onClick={() => handleSend()}
                                   >
                                     🔄
                                   </button>
