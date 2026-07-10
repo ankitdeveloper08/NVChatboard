@@ -11,20 +11,33 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
   const [showPreview, setShowPreview] = useState(false);
 
   const copyToExcel = async () => {
+    if (!Array.isArray(preview)) return;
+
+    // Skip heading rows if they only contain one cell
+    const rows = preview.filter((row) => row.length > 1);
+
+    const html = `
+    <table border="1">
+      ${rows
+        .map(
+          (row) =>
+            `<tr>${row
+              .map((cell) => `<td>${String(cell)}</td>`)
+              .join("")}</tr>`,
+        )
+        .join("")}
+    </table>
+  `;
+
+    const text = rows.map((row) => row.join("\t")).join("\n");
+
     try {
-      if (!tableRef.current) return;
-
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-
-      const range = document.createRange();
-      range.selectNode(tableRef.current);
-
-      selection.addRange(range);
-
-      document.execCommand("copy");
-
-      selection.removeAllRanges();
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([text], { type: "text/plain" }),
+        }),
+      ]);
 
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -32,9 +45,6 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
       console.error(err);
     }
   };
-  console.log("Preview:", preview);
-  console.log("First Row:", preview[0]);
-  console.log("First Row Length:", preview[0]?.length);
 
   return (
     <>
@@ -266,7 +276,7 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "100%",
+              width: "80%",
               height: "85vh",
               background: "#fff",
               borderRadius: "12px",
