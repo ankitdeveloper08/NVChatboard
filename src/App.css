@@ -641,6 +641,7 @@ button[disabled] {
 
 .message.assistant pre {
   margin: 12px 0;
+  width: 100%;
 }
 
 .profile-overlay {

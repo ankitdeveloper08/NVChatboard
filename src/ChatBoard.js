@@ -35,6 +35,7 @@ import ChatLoader from "./components/Modals/ChatLoader";
 import ChatLimitModal from "./components/Modals/ChatLimitModal";
 import ChatPromptLimitModal from "./components/Modals/ChatPromptLimitModal";
 import MainLoaderModal from "./components/Modals/MainLoaderModal";
+import ExcelPreview from "./components/Chat/ExcelPreview";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -473,6 +474,18 @@ function ChatBoard() {
       }),
     });
   };
+  const detectDocumentRequest = (text) => {
+    const prompt = text.toLowerCase();
+
+    return (
+      prompt.includes("pdf") ||
+      prompt.includes("word") ||
+      prompt.includes("docx") ||
+      prompt.includes("excel") ||
+      prompt.includes("xlsx") ||
+      prompt.includes("csv")
+    );
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -481,6 +494,7 @@ function ChatBoard() {
       return;
     }
     const question = input;
+    const isDocumentRequest = detectDocumentRequest(question);
     setIsNewConversationMode(false);
     try {
       const statusResponse = await fetch(`${API_URL}/api/prompt-status`, {
@@ -578,15 +592,21 @@ function ChatBoard() {
     try {
       controllerRef.current = new AbortController();
 
-      const response = await fetch(`${API_URL}/ask-docs`, {
+      const isDocumentRequest = detectDocumentRequest(question);
+
+      const endpoint = isDocumentRequest
+        ? `${API_URL}/api/documents`
+        : `${API_URL}/ask-docs`;
+
+      const payload = isDocumentRequest ? { prompt: question } : { question };
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          question,
-        }),
+        body: JSON.stringify(payload),
         signal: controllerRef.current.signal,
       });
       if (!response.ok) {
@@ -611,6 +631,60 @@ function ChatBoard() {
               : s,
           ),
         );
+
+        return;
+      }
+
+      // ===============================
+      // DOCUMENT RESPONSE
+      // ===============================
+      if (isDocumentRequest) {
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+
+        console.log(data);
+        if (data.type === "excel" || data.type === "xlsx") {
+          fullText = JSON.stringify({
+            type: "excel",
+            preview: data.preview,
+            fileUrl: `${API_URL}${data.fileUrl}`,
+            fileName: data.fileName,
+          });
+        } else {
+          fullText = `
+${data.content}
+
+---
+
+✅ **${data.type.toUpperCase()} document generated successfully**
+
+[Download ${data.fileName}](${API_URL}${data.fileUrl})
+`;
+        }
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === chatId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantMessage.id
+                      ? {
+                          ...m,
+                          content: fullText,
+                        }
+                      : m,
+                  ),
+                }
+              : s,
+          ),
+        );
+
+        await saveMessageToDB(chatId, "assistant", fullText);
+
+        setLoading(false);
         return;
       }
       const reader = response.body?.getReader();
@@ -1191,82 +1265,431 @@ function ChatBoard() {
                       >
                         {msg.role === "assistant" ? (
                           <>
-                            {msg.content ? (
-                              <ReactMarkdown
-                                children={msg.content}
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  code({
-                                    inline,
-                                    className,
-                                    children,
-                                    ...props
-                                  }) {
-                                    const match = /language-(\w+)/.exec(
-                                      className || "",
+                            {msg.content
+                              ? (() => {
+                                  try {
+                                    const parsed = JSON.parse(msg.content);
+                                    console.log(
+                                      "Message Content:",
+                                      msg.content,
                                     );
 
-                                    if (!inline && match) {
-                                      const copyId = `${msg.id || i}-${codeBlockCounter}`;
-                                      codeBlockCounter += 1;
-
+                                    if (parsed.type === "excel") {
                                       return (
-                                        <div style={{ position: "relative" }}>
-                                          <button
-                                            className="copy-btn"
-                                            onClick={() =>
-                                              handleCopy(
-                                                String(children).trim(),
-                                                copyId,
-                                              )
-                                            }
-                                          >
-                                            {copiedId === copyId
-                                              ? "Copied!"
-                                              : "Copy"}
-                                          </button>
-
-                                          <SyntaxHighlighter
-                                            style={atomOneDark}
-                                            language={match[1]}
-                                            PreTag="div"
-                                            {...props}
-                                          >
-                                            {String(children).replace(
-                                              /\n$/,
-                                              "",
-                                            )}
-                                          </SyntaxHighlighter>
-                                        </div>
+                                        <ExcelPreview
+                                          preview={parsed.preview}
+                                          fileUrl={parsed.fileUrl}
+                                          fileName={parsed.fileName}
+                                        />
                                       );
                                     }
+                                  } catch (e) {}
 
-                                    return (
-                                      <code
-                                        style={{
-                                          background: "#eee",
-                                          padding: "2px 5px",
-                                          borderRadius: "4px",
-                                          fontFamily: "monospace",
-                                        }}
-                                        {...props}
-                                      >
-                                        {children}
-                                      </code>
-                                    );
-                                  },
-                                }}
-                              />
-                            ) : (
-                              loading &&
-                              i === activeSession.messages.length - 1 && (
-                                <div className="typing-indicator">
-                                  <div className="typing-dot" />
-                                  <div className="typing-dot" />
-                                  <div className="typing-dot" />
-                                </div>
-                              )
-                            )}
+                                  return (
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      components={{
+                                        code({
+                                          inline,
+                                          className,
+                                          children,
+                                          ...props
+                                        }) {
+                                          const match = /language-(\w+)/.exec(
+                                            className || "",
+                                          );
+
+                                          if (!inline && match) {
+                                            const copyId = `${msg.id}-${codeBlockCounter++}`;
+
+                                            return (
+                                              <div
+                                                style={{
+                                                  borderRadius: 10,
+                                                  overflow: "hidden",
+                                                  margin: "20px 0",
+                                                  border: "1px solid #ddd",
+                                                }}
+                                              >
+                                                <div
+                                                  style={{
+                                                    background: "#1e1e1e",
+                                                    color: "#fff",
+                                                    padding: "8px 14px",
+                                                    display: "flex",
+                                                    justifyContent:
+                                                      "space-between",
+                                                    alignItems: "center",
+                                                    fontSize: 13,
+                                                  }}
+                                                >
+                                                  <span>{match[1]}</span>
+
+                                                  <button
+                                                    onClick={() =>
+                                                      handleCopy(
+                                                        String(
+                                                          children,
+                                                        ).replace(/\n$/, ""),
+                                                        copyId,
+                                                      )
+                                                    }
+                                                    style={{
+                                                      border: "20px",
+                                                      background: "transparent",
+                                                      color: "#fff",
+                                                      cursor: "pointer",
+                                                    }}
+                                                  >
+                                                    {copiedId === copyId ? (
+                                                      <FaCheck size={18} />
+                                                    ) : (
+                                                      <FaRegCopy size={18} />
+                                                    )}
+                                                  </button>
+                                                </div>
+
+                                                <SyntaxHighlighter
+                                                  style={atomOneDark}
+                                                  language={match[1]}
+                                                  PreTag="div"
+                                                  {...props}
+                                                >
+                                                  {String(children).replace(
+                                                    /\n$/,
+                                                    "",
+                                                  )}
+                                                </SyntaxHighlighter>
+                                              </div>
+                                            );
+                                          }
+
+                                          return (
+                                            <code
+                                              style={{
+                                                background: "#f3f4f6",
+                                                color: "#d63384",
+                                                padding: "3px 7px",
+                                                borderRadius: 6,
+                                                fontFamily: "monospace",
+                                                fontSize: 14,
+                                              }}
+                                            >
+                                              {children}
+                                            </code>
+                                          );
+                                        },
+
+                                        p({ children }) {
+                                          return (
+                                            <p
+                                              style={{
+                                                marginBottom: 15,
+                                                lineHeight: 1.9,
+                                                fontSize: 16,
+                                                color: "#222",
+                                              }}
+                                            >
+                                              {children}
+                                            </p>
+                                          );
+                                        },
+
+                                        h1({ children }) {
+                                          return (
+                                            <h1
+                                              style={{
+                                                fontSize: 34,
+                                                fontWeight: 700,
+                                                margin: "25px 0 15px",
+                                              }}
+                                            >
+                                              {children}
+                                            </h1>
+                                          );
+                                        },
+
+                                        h2({ children }) {
+                                          return (
+                                            <h2
+                                              style={{
+                                                fontSize: 28,
+                                                fontWeight: 700,
+                                                margin: "22px 0 14px",
+                                              }}
+                                            >
+                                              {children}
+                                            </h2>
+                                          );
+                                        },
+
+                                        h3({ children }) {
+                                          return (
+                                            <h3
+                                              style={{
+                                                fontSize: 22,
+                                                fontWeight: 600,
+                                                margin: "18px 0 12px",
+                                              }}
+                                            >
+                                              {children}
+                                            </h3>
+                                          );
+                                        },
+
+                                        h4({ children }) {
+                                          return (
+                                            <h4
+                                              style={{
+                                                fontSize: 18,
+                                                fontWeight: 600,
+                                                marginBottom: 10,
+                                              }}
+                                            >
+                                              {children}
+                                            </h4>
+                                          );
+                                        },
+
+                                        ul({ children }) {
+                                          return (
+                                            <ul
+                                              style={{
+                                                paddingLeft: 28,
+                                                lineHeight: 1.8,
+                                                marginBottom: 15,
+                                              }}
+                                            >
+                                              {children}
+                                            </ul>
+                                          );
+                                        },
+
+                                        ol({ children }) {
+                                          return (
+                                            <ol
+                                              style={{
+                                                paddingLeft: 28,
+                                                lineHeight: 1.8,
+                                                marginBottom: 15,
+                                              }}
+                                            >
+                                              {children}
+                                            </ol>
+                                          );
+                                        },
+
+                                        li({ children }) {
+                                          return (
+                                            <li
+                                              style={{
+                                                marginBottom: 8,
+                                              }}
+                                            >
+                                              {children}
+                                            </li>
+                                          );
+                                        },
+
+                                        strong({ children }) {
+                                          return (
+                                            <strong
+                                              style={{
+                                                fontWeight: 700,
+                                              }}
+                                            >
+                                              {children}
+                                            </strong>
+                                          );
+                                        },
+
+                                        em({ children }) {
+                                          return (
+                                            <em
+                                              style={{
+                                                fontStyle: "italic",
+                                              }}
+                                            >
+                                              {children}
+                                            </em>
+                                          );
+                                        },
+
+                                        del({ children }) {
+                                          return (
+                                            <del
+                                              style={{
+                                                color: "#888",
+                                              }}
+                                            >
+                                              {children}
+                                            </del>
+                                          );
+                                        },
+
+                                        hr() {
+                                          return (
+                                            <hr
+                                              style={{
+                                                margin: "25px 0",
+                                                border: 0,
+                                                borderTop: "1px solid #ddd",
+                                              }}
+                                            />
+                                          );
+                                        },
+
+                                        blockquote({ children }) {
+                                          return (
+                                            <blockquote
+                                              style={{
+                                                borderLeft: "4px solid #10a37f",
+                                                padding: "12px 18px",
+                                                background: "#f8f9fa",
+                                                margin: "20px 0",
+                                                color: "#444",
+                                                borderRadius: 6,
+                                              }}
+                                            >
+                                              {children}
+                                            </blockquote>
+                                          );
+                                        },
+
+                                        table({ children }) {
+                                          return (
+                                            <div
+                                              style={{
+                                                overflowX: "auto",
+                                                margin: "20px 0",
+                                              }}
+                                            >
+                                              <table
+                                                style={{
+                                                  width: "100%",
+                                                  borderCollapse: "collapse",
+                                                }}
+                                              >
+                                                {children}
+                                              </table>
+                                            </div>
+                                          );
+                                        },
+
+                                        thead({ children }) {
+                                          return (
+                                            <thead
+                                              style={{
+                                                background: "#f3f4f6",
+                                              }}
+                                            >
+                                              {children}
+                                            </thead>
+                                          );
+                                        },
+
+                                        tbody({ children }) {
+                                          return <tbody>{children}</tbody>;
+                                        },
+
+                                        tr({ children }) {
+                                          return (
+                                            <tr
+                                              style={{
+                                                borderBottom:
+                                                  "1px solid #e5e7eb",
+                                              }}
+                                            >
+                                              {children}
+                                            </tr>
+                                          );
+                                        },
+
+                                        th({ children }) {
+                                          return (
+                                            <th
+                                              style={{
+                                                padding: 12,
+                                                border: "1px solid #ddd",
+                                                textAlign: "left",
+                                                fontWeight: 600,
+                                              }}
+                                            >
+                                              {children}
+                                            </th>
+                                          );
+                                        },
+
+                                        td({ children }) {
+                                          return (
+                                            <td
+                                              style={{
+                                                padding: 12,
+                                                border: "1px solid #ddd",
+                                              }}
+                                            >
+                                              {children}
+                                            </td>
+                                          );
+                                        },
+
+                                        img({ src, alt }) {
+                                          return (
+                                            <img
+                                              src={src}
+                                              alt={alt}
+                                              style={{
+                                                maxWidth: "100%",
+                                                borderRadius: 10,
+                                                margin: "15px 0",
+                                              }}
+                                            />
+                                          );
+                                        },
+
+                                        a({ href, children }) {
+                                          return (
+                                            <a
+                                              href={href}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              style={{
+                                                color: "#2563eb",
+                                                fontWeight: 600,
+                                                textDecoration: "none",
+                                              }}
+                                            >
+                                              📥 {children}
+                                            </a>
+                                          );
+                                        },
+
+                                        input({ checked }) {
+                                          return (
+                                            <input
+                                              type="checkbox"
+                                              checked={checked}
+                                              readOnly
+                                              style={{
+                                                marginRight: 8,
+                                              }}
+                                            />
+                                          );
+                                        },
+                                      }}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
+                                  );
+                                })()
+                              : loading &&
+                                i === activeSession.messages.length - 1 && (
+                                  <div className="typing-indicator">
+                                    <div className="typing-dot" />
+                                    <div className="typing-dot" />
+                                    <div className="typing-dot" />
+                                  </div>
+                                )}
 
                             {/* Action Bar */}
                             {!(
