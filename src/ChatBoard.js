@@ -36,6 +36,7 @@ import ChatLimitModal from "./components/Modals/ChatLimitModal";
 import ChatPromptLimitModal from "./components/Modals/ChatPromptLimitModal";
 import MainLoaderModal from "./components/Modals/MainLoaderModal";
 import ExcelPreview from "./components/Chat/ExcelPreview";
+import PDFPreview from "./components/Chat/PDFPreview";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -649,6 +650,13 @@ function ChatBoard() {
         if (data.type === "excel" || data.type === "xlsx") {
           fullText = JSON.stringify({
             type: "excel",
+            preview: data.preview,
+            fileUrl: `${API_URL}${data.fileUrl}`,
+            fileName: data.fileName,
+          });
+        } else if (data.type === "pdf") {
+          fullText = JSON.stringify({
+            type: "pdf",
             preview: data.preview,
             fileUrl: `${API_URL}${data.fileUrl}`,
             fileName: data.fileName,
@@ -1269,15 +1277,22 @@ ${data.content}
                               ? (() => {
                                   try {
                                     const parsed = JSON.parse(msg.content);
-                                    console.log(
-                                      "Message Content:",
-                                      msg.content,
-                                    );
 
                                     if (parsed.type === "excel") {
                                       return (
                                         <ExcelPreview
                                           preview={parsed.preview}
+                                          fileUrl={parsed.fileUrl}
+                                          fileName={parsed.fileName}
+                                        />
+                                      );
+                                    }
+                                    if (parsed.type === "pdf") {
+                                      return (
+                                        <PDFPreview
+                                          content={
+                                            parsed.content || parsed.preview
+                                          }
                                           fileUrl={parsed.fileUrl}
                                           fileName={parsed.fileName}
                                         />
@@ -1725,7 +1740,6 @@ ${data.content}
                                   <button
                                     className="message-action-btn"
                                     title="Like"
-                                    onClick={() => console.log("Liked")}
                                   >
                                     👍
                                   </button>
@@ -1734,7 +1748,6 @@ ${data.content}
                                   <button
                                     className="message-action-btn"
                                     title="Dislike"
-                                    onClick={() => console.log("Disliked")}
                                   >
                                     👎
                                   </button>
