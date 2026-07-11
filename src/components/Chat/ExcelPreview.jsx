@@ -1,7 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FaCheck, FaRegCopy, FaRegEye } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Spreadsheet from "react-spreadsheet";
+import * as XLSX from "xlsx";
 
 export default function ExcelPreview({ preview, fileUrl, fileName }) {
   const isTable = Array.isArray(preview);
@@ -9,6 +11,22 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
 
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [sheetData, setSheetData] = useState([]);
+  const [loadingSheet, setLoadingSheet] = useState(true);
+  const headings = [];
+  const tableRows = [];
+
+  if (Array.isArray(preview)) {
+    preview.forEach((row) => {
+      if (!Array.isArray(row)) return;
+
+      if (row.length === 1 && row[0].startsWith("#")) {
+        headings.push(row[0]);
+      } else if (row.length > 1) {
+        tableRows.push(row);
+      }
+    });
+  }
 
   const copyToExcel = async () => {
     if (!Array.isArray(preview)) return;
@@ -46,6 +64,45 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
     }
   };
 
+  useEffect(() => {
+    if (!fileUrl) return;
+
+    const loadExcel = async () => {
+      try {
+        setLoadingSheet(true);
+
+        const response = await fetch(fileUrl);
+
+        const buffer = await response.arrayBuffer();
+
+        const workbook = XLSX.read(buffer, {
+          type: "array",
+        });
+
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+        const rows = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          blankrows: true,
+        });
+
+        const data = rows.map((row) =>
+          row.map((cell) => ({
+            value: cell ?? "",
+          })),
+        );
+
+        setSheetData(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingSheet(false);
+      }
+    };
+
+    loadExcel();
+  }, [fileUrl]);
+
   return (
     <>
       <div
@@ -55,36 +112,39 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
           overflow: "hidden",
           background: "#fff",
           width: "100%",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          boxShadow: "0 2px 8px rgba(0,0,0,.08)",
         }}
       >
         {/* Header */}
         <div
           style={{
             padding: "14px 18px",
-            fontWeight: 600,
-            fontSize: "16px",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
             borderBottom: "1px solid #eee",
             background: "#fafafa",
           }}
         >
-          📊 {fileName}
-          <div style={{ display: "flex", gap: "10px", marginLeft: "auto" }}>
+          <strong>📊 {fileName}</strong>
+
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              gap: 10,
+            }}
+          >
             <button
               onClick={() => setShowPreview(true)}
               style={{
                 padding: "8px 16px",
                 border: "1px solid #ddd",
+                borderRadius: 999,
                 cursor: "pointer",
-                fontWeight: 600,
-                borderRadius: "300px",
-                marginRight: "8px",
+                background: "#fff",
               }}
             >
-              <FaRegEye size={16} />
+              <FaRegEye />
             </button>
 
             <button
@@ -92,9 +152,10 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
               style={{
                 padding: "8px 16px",
                 border: "1px solid #ddd",
+                borderRadius: 999,
                 cursor: "pointer",
-                fontWeight: 600,
-                borderRadius: "300px",
+                background: "#fff",
+                marginLeft: "8px",
               }}
             >
               {copied ? <FaCheck /> : <FaRegCopy />}
@@ -104,145 +165,127 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
 
         {/* Preview */}
         <div
+          ref={tableRef}
           style={{
-            maxHeight: "420px",
+            maxHeight: "100%",
             overflow: "auto",
-            padding: "18px",
+            background: "#fff",
           }}
         >
-          {isTable ? (
-            <table
-              ref={tableRef}
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-              }}
-            >
-              <tbody>
-                {preview.map((row, i) => (
-                  <tr key={i}>
-                    {row.map((cell, j) => (
-                      <td
-                        key={j}
+          {Array.isArray(preview) ? (
+            (() => {
+              const maxCols = Math.max(
+                ...preview.map((r) => (Array.isArray(r) ? r.length : 0)),
+                8,
+              );
+
+              const letters = Array.from({ length: maxCols }, (_, i) =>
+                String.fromCharCode(65 + i),
+              );
+
+              return (
+                <table
+                  style={{
+                    borderCollapse: "collapse",
+                    fontFamily: "Calibri, Arial",
+                    fontSize: 15,
+                    minWidth: "100%",
+                  }}
+                >
+                  {/* Excel Column Header */}
+                  <thead>
+                    <tr>
+                      <th
                         style={{
-                          border: "1px solid #ddd",
-                          padding: "10px",
-                          verticalAlign: "top",
+                          minWidth: 40,
+                          background: "#f3f3f3",
+                          border: "1px solid #d9d9d9",
                         }}
-                      >
-                        {cell}
-                      </td>
+                      />
+                      {letters.map((letter) => (
+                        <th
+                          key={letter}
+                          style={{
+                            background: "#f3f3f3",
+                            border: "1px solid #d9d9d9",
+                            minWidth: 120,
+                            height: 32,
+                            fontWeight: 600,
+                            textAlign: "center",
+                          }}
+                        >
+                          {letter}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {preview.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {/* Row Number */}
+                        <td
+                          style={{
+                            background: "#f3f3f3",
+                            border: "1px solid #d9d9d9",
+                            textAlign: "center",
+                            width: 45,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {rowIndex + 1}
+                        </td>
+
+                        {Array.from({ length: maxCols }).map((_, colIndex) => {
+                          const value =
+                            row && row[colIndex] !== undefined
+                              ? row[colIndex]
+                              : "";
+
+                          const isHeading =
+                            colIndex === 0 &&
+                            typeof value === "string" &&
+                            value.startsWith("#");
+
+                          return (
+                            <td
+                              key={colIndex}
+                              style={{
+                                border: "1px solid #d9d9d9",
+                                minWidth: 120,
+                                height: 34,
+                                padding: "6px 8px",
+                                whiteSpace: "pre-wrap",
+                                verticalAlign: "top",
+                                fontWeight: isHeading ? 700 : 400,
+                                fontSize: isHeading ? 18 : 15,
+                                background: "#fff",
+                              }}
+                            >
+                              {String(value)
+                                .replace(/^#\s*/, "")
+                                .replace(/^##\s*/, "")}
+                            </td>
+                          );
+                        })}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              );
+            })()
           ) : (
-            <div
-              style={{
-                lineHeight: 1.8,
-                fontSize: "15px",
-              }}
-            >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h1: ({ children }) => (
-                    <h1
-                      style={{
-                        fontSize: "28px",
-                        marginBottom: "18px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {children}
-                    </h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2
-                      style={{
-                        fontSize: "22px",
-                        marginTop: "20px",
-                        marginBottom: "12px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {children}
-                    </h2>
-                  ),
-                  h3: ({ children }) => (
-                    <h3
-                      style={{
-                        fontSize: "18px",
-                        marginTop: "18px",
-                        marginBottom: "10px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {children}
-                    </h3>
-                  ),
-                  p: ({ children }) => (
-                    <p style={{ marginBottom: "12px" }}>{children}</p>
-                  ),
-                  ul: ({ children }) => (
-                    <ul style={{ paddingLeft: "24px" }}>{children}</ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol style={{ paddingLeft: "24px" }}>{children}</ol>
-                  ),
-                  li: ({ children }) => (
-                    <li style={{ marginBottom: "6px" }}>{children}</li>
-                  ),
-                  table: ({ children }) => (
-                    <table
-                      style={{
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        marginTop: "15px",
-                      }}
-                    >
-                      {children}
-                    </table>
-                  ),
-                  th: ({ children }) => (
-                    <th
-                      style={{
-                        border: "1px solid #ddd",
-                        background: "#f5f5f5",
-                        padding: "10px",
-                      }}
-                    >
-                      {children}
-                    </th>
-                  ),
-                  td: ({ children }) => (
-                    <td
-                      style={{
-                        border: "1px solid #ddd",
-                        padding: "10px",
-                      }}
-                    >
-                      {children}
-                    </td>
-                  ),
-                }}
-              >
-                {preview || "No preview available."}
-              </ReactMarkdown>
-            </div>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {preview || "No preview available."}
+            </ReactMarkdown>
           )}
         </div>
-
         {/* Footer */}
         <div
           style={{
             borderTop: "1px solid #eee",
             padding: "14px 18px",
             background: "#fafafa",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
           }}
         >
           <a
@@ -251,8 +294,8 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
             rel="noopener noreferrer"
             style={{
               color: "#2563eb",
-              fontWeight: 600,
               textDecoration: "none",
+              fontWeight: 600,
             }}
           >
             📥 Download Excel
@@ -260,13 +303,14 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
         </div>
       </div>
 
+      {/* Modal */}
       {showPreview && (
         <div
           onClick={() => setShowPreview(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.6)",
+            background: "rgba(0,0,0,.6)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -276,13 +320,13 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "80%",
-              height: "85vh",
+              width: "90%",
+              height: "90%",
               background: "#fff",
-              borderRadius: "12px",
+              borderRadius: 12,
+              overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              overflow: "hidden",
             }}
           >
             <div
@@ -293,7 +337,7 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
                 justifyContent: "space-between",
                 alignItems: "center",
                 fontWeight: 600,
-                fontSize: "18px",
+                fontSize: 18,
               }}
             >
               📊 {fileName}
@@ -302,7 +346,7 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
                 style={{
                   border: "none",
                   background: "transparent",
-                  fontSize: "24px",
+                  fontSize: 24,
                   cursor: "pointer",
                 }}
               >
@@ -314,35 +358,152 @@ export default function ExcelPreview({ preview, fileUrl, fileName }) {
               style={{
                 flex: 1,
                 overflow: "auto",
-                padding: "20px",
+                padding: 35,
               }}
             >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                }}
-              >
-                <tbody>
-                  {preview.map((row, i) => (
-                    <tr key={i}>
-                      {row.map((cell, j) => (
-                        <td
-                          key={j}
+              {(() => {
+                const sections = [];
+                let current = {
+                  title: null,
+                  subtitle: null,
+                  rows: [],
+                };
+
+                preview.forEach((row) => {
+                  if (!Array.isArray(row)) return;
+
+                  // Main Heading
+                  if (row.length === 1 && String(row[0]).startsWith("# ")) {
+                    if (current.rows.length) {
+                      sections.push(current);
+                    }
+
+                    current = {
+                      title: String(row[0]).replace(/^#\s*/, ""),
+                      subtitle: null,
+                      rows: [],
+                    };
+                  }
+
+                  // Sub Heading
+                  else if (
+                    row.length === 1 &&
+                    String(row[0]).startsWith("## ")
+                  ) {
+                    current.subtitle = String(row[0]).replace(/^##\s*/, "");
+                  }
+
+                  // Empty row -> create space between tables
+                  else if (
+                    row.length === 0 ||
+                    row.every((c) => String(c).trim() === "")
+                  ) {
+                    if (current.rows.length) {
+                      sections.push(current);
+                      current = {
+                        title: current.title,
+                        subtitle: null,
+                        rows: [],
+                      };
+                    }
+                  }
+
+                  // Table rows
+                  else if (row.length > 1) {
+                    current.rows.push(row);
+                  }
+                });
+
+                if (current.rows.length) {
+                  sections.push(current);
+                }
+
+                return sections.map((section, index) => {
+                  const headers = section.rows[0] || [];
+                  const body = section.rows.slice(1);
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        marginBottom: 80,
+                      }}
+                    >
+                      {section.title && (
+                        <h1
                           style={{
-                            border: "1px solid #ddd",
-                            padding: "10px",
-                            background: i === 0 ? "#f8fafc" : "#fff",
-                            fontWeight: i === 0 ? 600 : 400,
+                            fontSize: 44,
+                            fontWeight: 700,
+                            marginBottom: 18,
                           }}
                         >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          {section.title}
+                        </h1>
+                      )}
+
+                      {section.subtitle && (
+                        <h2
+                          style={{
+                            fontSize: 30,
+                            fontWeight: 600,
+                            marginBottom: 30,
+                          }}
+                        >
+                          {section.subtitle}
+                        </h2>
+                      )}
+
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          marginTop: 15,
+                        }}
+                      >
+                        <thead>
+                          <tr>
+                            {headers.map((cell, i) => (
+                              <th
+                                key={i}
+                                style={{
+                                  border: "1px solid #d1d5db",
+                                  background: "#f8fafc",
+                                  padding: 14,
+                                  textAlign: "left",
+                                  fontWeight: 700,
+                                  fontSize: 17,
+                                }}
+                              >
+                                {cell}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {body.map((row, i) => (
+                            <tr key={i}>
+                              {row.map((cell, j) => (
+                                <td
+                                  key={j}
+                                  style={{
+                                    border: "1px solid #d1d5db",
+                                    padding: 14,
+                                    fontSize: 16,
+                                    verticalAlign: "top",
+                                  }}
+                                >
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
