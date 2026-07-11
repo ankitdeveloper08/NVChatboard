@@ -43,7 +43,7 @@ const Sidebar = ({
             <span className="sidebar-title">
               <img src="/NVlogo.jpg" alt="NV Logo" height="50px" />
               <span className="sidekick-text"> |</span>
-              <span className="sidekick-text">Sidekick</span>
+              <span className="sidekick-text">Assistant</span>
             </span>
 
             {!isSidebarCollapsed && (

@@ -104,10 +104,12 @@ const Login = () => {
         btnContainer.innerHTML = "";
 
         window.google.accounts.id.renderButton(btnContainer, {
-          theme: "outline",
+          theme: "filled_blue",
           size: "large",
-          width: "350",
+          width: 340,
           shape: "pill",
+          text: "signin_with",
+          logo_alignment: "left",
         });
       }
     }
@@ -192,7 +194,7 @@ const Login = () => {
         <h1 style={{ textAlign: "center" }}>Welcome back</h1>
 
         <p style={{ textAlign: "center", color: "#6b7280" }}>
-          Sign in to continue to Sidekick
+          Sign in to continue to NV AI Assistant
         </p>
 
         {error && (
@@ -209,7 +211,7 @@ const Login = () => {
           </div>
         )}
 
-        <input
+        {/* <input
           style={inputStyle}
           type="email"
           placeholder="Gmail address"
@@ -257,11 +259,16 @@ const Login = () => {
 
         <div style={{ marginTop: "20px", textAlign: "center" }}>
           <Link to="/register">Sign up</Link>
-        </div>
+        </div> */}
 
         <div
           id="google-signin-button"
-          style={{ display: "flex", justifyContent: "center", marginTop: 20 }}
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: 60,
+            marginBottom: 60,
+          }}
         />
       </div>
 

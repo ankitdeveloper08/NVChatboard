@@ -27,7 +27,7 @@ const ProfileModal = ({
           )}
 
           <h2>{userName}</h2>
-          <h3 className="profile-subtitle">NewVision | Sidekick</h3>
+          <h3 className="profile-subtitle">NewVision | AI Assistant</h3>
         </div>
 
         <div className="profile-info">
