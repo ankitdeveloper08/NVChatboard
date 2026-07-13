@@ -410,6 +410,7 @@ function ChatBoard() {
     setIsNewConversationMode(true);
 
     sessionStorage.removeItem("activeSessionId");
+    navigate("/chat", { replace: true });
   };
   // Create a new chat from a suggestion and optionally send immediately
   const handleSuggestion = (text) => {
@@ -1183,7 +1184,9 @@ ${data.content}
                       }}
                     />
                     <button
+                      onClick={handleVoiceStart}
                       disabled={limitExpired}
+                      title={listening ? "Listening..." : "Voice Input"}
                       style={{
                         width: "38px",
                         height: "38px",
