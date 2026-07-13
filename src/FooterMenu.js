@@ -1,4 +1,5 @@
 import React from "react";
+import { FaArrowRightFromBracket } from "react-icons/fa6";
 
 const FooterMenu = ({
   userName,
@@ -7,7 +8,7 @@ const FooterMenu = ({
   menuItemStyle,
   setShowFooterMenu,
   setShowProfileModal,
-  handleLogout,
+  setShowLogoutModal,
 }) => {
   if (!showFooterMenu) return null;
 
@@ -101,6 +102,7 @@ const FooterMenu = ({
           onClick={() => {
             setShowFooterMenu(false);
             setShowProfileModal(true);
+            setShowLogoutModal(true);
           }}
           style={menuItemStyle}
         >
@@ -126,7 +128,7 @@ const FooterMenu = ({
         <button
           onClick={() => {
             setShowFooterMenu(false);
-            handleLogout();
+            setShowLogoutModal(true);
           }}
           style={{
             width: "100%",
@@ -139,7 +141,7 @@ const FooterMenu = ({
             fontWeight: 600,
           }}
         >
-          🚪 Logout
+          <FaArrowRightFromBracket size={18} /> Log out
         </button>
       </div>
     </div>

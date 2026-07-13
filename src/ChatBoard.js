@@ -37,6 +37,7 @@ import ChatPromptLimitModal from "./components/Modals/ChatPromptLimitModal";
 import MainLoaderModal from "./components/Modals/MainLoaderModal";
 import ExcelPreview from "./components/Chat/ExcelPreview";
 import PDFPreview from "./components/Chat/PDFPreview";
+import LogoutModal from "./components/Modals/LogoutModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
@@ -84,7 +85,7 @@ function ChatBoard() {
   const footerMenuRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const handleLogout = () => {
     sessionStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("token");
@@ -1919,9 +1920,20 @@ ${data.content}
           menuItemStyle={menuItemStyle}
           setShowFooterMenu={setShowFooterMenu}
           setShowProfileModal={setShowProfileModal}
-          handleLogout={handleLogout}
+          setShowLogoutModal={setShowLogoutModal}
           width="100%"
         />
+        {showLogoutModal && (
+          <LogoutModal
+            userName={userName}
+            email={sessionStorage.getItem("userEmail")}
+            onCancel={() => setShowLogoutModal(false)}
+            onLogout={() => {
+              setShowLogoutModal(false);
+              handleLogout();
+            }}
+          />
+        )}
       </div>
     </>
   );
