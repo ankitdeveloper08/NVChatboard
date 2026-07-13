@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
@@ -46,6 +46,7 @@ function ChatBoard() {
   const API_URL = process.env.REACT_APP_RAG_API_URL;
   const token = sessionStorage.getItem("token");
   const navigate = useNavigate();
+  const { chatId: chatIdFromUrl } = useParams();
   const [sessions, setSessions] = useState([]);
   const sessionsRef = useRef(sessions); // <-- new
   useEffect(() => {
@@ -268,7 +269,28 @@ function ChatBoard() {
       }));
       setSessions(formattedChats);
 
-      const savedChatId = sessionStorage.getItem("activeSessionId");
+      const urlChatId = chatIdFromUrl;
+
+      if (
+        urlChatId &&
+        formattedChats.some((c) => String(c.id) === String(urlChatId))
+      ) {
+        setActiveSessionId(urlChatId);
+        openChat(urlChatId);
+      } else {
+        const savedChatId = sessionStorage.getItem("activeSessionId");
+
+        if (
+          savedChatId &&
+          formattedChats.some((c) => String(c.id) === String(savedChatId))
+        ) {
+          setActiveSessionId(savedChatId);
+          openChat(savedChatId);
+        } else if (formattedChats.length > 0) {
+          setActiveSessionId(formattedChats[0].id);
+          openChat(formattedChats[0].id);
+        }
+      }
 
       if (
         savedChatId &&
@@ -291,6 +313,7 @@ function ChatBoard() {
     loadChats();
   }, []);
   const openChat = async (chatId) => {
+    navigate(`/chat/${chatId}`, { replace: true });
     setIsOpeningChat(true);
     try {
       setPendingChat(false);
@@ -551,6 +574,8 @@ function ChatBoard() {
         sessionStorage.setItem("activeSessionId", String(chat.id));
 
         chatId = chat.id;
+
+        navigate(`/chat/${chat.id}`, { replace: true });
 
         setPendingChat(false);
       } catch (err) {

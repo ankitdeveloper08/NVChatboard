@@ -33,6 +33,14 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/chat/:chatId"
+          element={
+            <ProtectedRoute>
+              <ChatBoard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Redirect any unknown route to /login */}
         <Route path="*" element={<Navigate to="/" replace />} />
