@@ -2,7 +2,7 @@ import React from "react";
 
 import "../../styles/MainLoaderModal.css";
 
-const MainLoaderModal = ({ title = "SideKick", logo = "/NVlogo.jpg" }) => {
+const MainLoaderModal = ({ title = "AI Assistant", logo = "/NVlogo.jpg" }) => {
   return (
     <div className="main-loader-overlay">
       <div className="main-loader-card">

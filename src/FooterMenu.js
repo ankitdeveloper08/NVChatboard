@@ -102,7 +102,6 @@ const FooterMenu = ({
           onClick={() => {
             setShowFooterMenu(false);
             setShowProfileModal(true);
-            setShowLogoutModal(true);
           }}
           style={menuItemStyle}
         >
