@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
+import {
+  setAuthSessionExpiry,
+  isAuthSessionValid,
+  clearAuthSession,
+} from "./utils/auth";
 
 const API_URL = process.env.REACT_APP_RAG_API_URL;
 
@@ -19,11 +24,10 @@ const Login = () => {
 
   // ✅ auto redirect if already logged in
   useEffect(() => {
-    const isAuthenticated =
-      sessionStorage.getItem("isAuthenticated") === "true";
-
-    if (isAuthenticated) {
+    if (isAuthSessionValid()) {
       navigate("/chat", { replace: true });
+    } else {
+      clearAuthSession();
     }
   }, [navigate]);
 
@@ -75,6 +79,7 @@ const Login = () => {
       sessionStorage.setItem("userName", data.user.name);
       sessionStorage.setItem("userEmail", data.user.email);
       sessionStorage.setItem("role", data.user.role);
+      setAuthSessionExpiry();
 
       window.dispatchEvent(new Event("auth-change"));
 
@@ -141,6 +146,7 @@ const Login = () => {
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("userName", data.user?.name);
       sessionStorage.setItem("userEmail", data.user?.email);
+      setAuthSessionExpiry();
 
       navigate("/chat", { replace: true });
     } catch (err) {

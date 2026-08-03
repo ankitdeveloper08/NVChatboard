@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { isAuthSessionValid } from "../utils/auth";
 
 const AuthContext = createContext();
 const API_URL = process.env.REACT_APP_RAG_API_URL;
@@ -10,13 +11,13 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const token = sessionStorage.getItem("token"); // ✅ FIXED
-
-      if (!token) {
+      if (!isAuthSessionValid()) {
         setUser(null);
         setLoading(false);
         return;
       }
+
+      const token = sessionStorage.getItem("token");
 
       const res = await axios.get(`${API_URL}/api/auth/me`, {
         headers: {

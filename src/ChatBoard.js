@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { clearAuthSession, isAuthSessionValid } from "./utils/auth";
 import ReactMarkdown from "react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
@@ -38,13 +39,15 @@ import MainLoaderModal from "./components/Modals/MainLoaderModal";
 import ExcelPreview from "./components/Chat/ExcelPreview";
 import PDFPreview from "./components/Chat/PDFPreview";
 import LogoutModal from "./components/Modals/LogoutModal";
+import SessionExpiredModal from "./components/Modals/SessionExpiredModal";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("json", json);
 
 function ChatBoard() {
   const API_URL = process.env.REACT_APP_RAG_API_URL;
-  const token = sessionStorage.getItem("token");
+  const isAuthenticated = isAuthSessionValid();
+  const token = isAuthenticated ? sessionStorage.getItem("token") : null;
   const navigate = useNavigate();
   const { chatId: chatIdFromUrl } = useParams();
   const [sessions, setSessions] = useState([]);
@@ -87,22 +90,17 @@ function ChatBoard() {
   const messagesContainerRef = useRef(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const handleLogout = () => {
-    sessionStorage.removeItem("isAuthenticated");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("userName");
-    sessionStorage.removeItem("userEmail");
-    sessionStorage.removeItem("authProvider");
-    sessionStorage.removeItem("activeSessionId");
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
+  const handleLogout = () => {
+    clearAuthSession();
     navigate("/");
   };
 
   useEffect(() => {
-    const token = sessionStorage.getItem("token");
-
-    if (!token) {
-      navigate("/", { replace: true });
+    if (!isAuthenticated) {
+      clearAuthSession();
+      setShowSessionExpiredModal(true);
       return;
     }
 
@@ -111,7 +109,7 @@ function ChatBoard() {
     if (storedName) {
       setUserName(storedName);
     }
-  }, [navigate]);
+  }, [navigate, isAuthenticated]);
 
   // === VOICE: new state + ref (added, doesn't remove any existing code) ===
   const [listening, setListening] = useState(false);
@@ -1958,6 +1956,14 @@ ${data.content}
             onCancel={() => setShowLogoutModal(false)}
             onLogout={() => {
               setShowLogoutModal(false);
+              handleLogout();
+            }}
+          />
+        )}
+        {showSessionExpiredModal && (
+          <SessionExpiredModal
+            onClose={() => {
+              setShowSessionExpiredModal(false);
               handleLogout();
             }}
           />
