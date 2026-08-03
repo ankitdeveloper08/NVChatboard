@@ -33,7 +33,7 @@ const Sidebar = ({
   limitExpired,
 }) => {
   const { user } = useAuth();
-   const API_URL = process.env.REACT_APP_RAG_API_URL;
+  const API_URL = process.env.REACT_APP_RAG_API_URL;
   return (
     <>
       {/* Expanded Sidebar */}
@@ -55,35 +55,39 @@ const Sidebar = ({
               </button>
             )}
           </div>
-          {user?.role === "ADMIN" && (
-            <button className="new-chat-btn">Upload Document</button>
-          )}
+          <div>
+            {user?.role === "ADMIN" && (
+              <button className="new-chat-btn">Upload Document</button>
+            )}
 
-          <button
-            // disabled={limitExpired}
-            className="new-chat-btn"
-            onClick={createNewChat}
-          >
-            <FaPenToSquare /> <b> New Conversation</b>
-          </button>
+            <button
+              // disabled={limitExpired}
+              className="new-chat-btn"
+              onClick={createNewChat}
+              style={{ height: "37px", minHeight: "37px" }}
+            >
+              <FaPenToSquare /> <b> New Conversation</b>
+            </button>
 
-          <button
-            className="new-chat-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowSearch((prev) => !prev);
-            }}
-          >
-            <FaSearch /> <b>Search Conversations</b>
-          </button>
+            <button
+              className="new-chat-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowSearch((prev) => !prev);
+              }}
+              style={{ height: "37px", minHeight: "37px" }}
+            >
+              <FaSearch /> <b>Search Conversations</b>
+            </button>
 
-          {showSearch && (
-            <SearchModal
-              sessions={sessions}
-              onSelect={(id) => setActiveSessionId(id)}
-              onClose={() => setShowSearch(false)}
-            />
-          )}
+            {showSearch && (
+              <SearchModal
+                sessions={sessions}
+                onSelect={(id) => setActiveSessionId(id)}
+                onClose={() => setShowSearch(false)}
+              />
+            )}
+          </div>
 
           <div className="session-list">
             {sessions.map((s) => (
