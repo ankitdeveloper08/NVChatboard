@@ -1066,6 +1066,7 @@ ${data.content}
               padding: "1rem",
               borderBottom: "1px solid #e5e5e5",
               backgroundColor: "#fff",
+              height: "60px",
             }}
           >
             <div
@@ -1085,7 +1086,7 @@ ${data.content}
                 }}
               >
                 {" "}
-                NV | Assistant
+                {/* NV | Assistant
                 <img
                   src="/NVlg.ico"
                   alt="NV Logo"
@@ -1093,7 +1094,7 @@ ${data.content}
                     width: "32px",
                     height: "32px",
                   }}
-                />
+                /> */}
               </strong>
             </div>
           </header>

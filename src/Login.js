@@ -200,7 +200,7 @@ const Login = () => {
         <h1 style={{ textAlign: "center" }}>Welcome back</h1>
 
         <p style={{ textAlign: "center", color: "#6b7280" }}>
-          Sign in to continue to NV AI Assistant
+          Sign in to continue to AV AI Assistant
         </p>
 
         {error && (
@@ -286,7 +286,12 @@ const Login = () => {
               alt="NewVision"
               className="google-loader-logo"
             />
-            <div className="google-loader-spinner" />
+            {/* <div className="google-loader-spinner" /> */}
+            <div className="main-loader-spinner">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
             <h3 className="google-loader-title">Signing you in</h3>
             <p className="google-loader-text">
               Authenticating with Google

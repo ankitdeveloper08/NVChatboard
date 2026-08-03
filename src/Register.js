@@ -155,7 +155,7 @@ const Register = () => {
             marginBottom: "30px",
           }}
         >
-          Continue to NewVision | AI Assistant
+          Continue to AV | AI Assistant
         </p>
 
         {error && (
