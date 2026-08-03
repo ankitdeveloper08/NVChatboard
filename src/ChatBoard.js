@@ -498,6 +498,28 @@ function ChatBoard() {
       }),
     });
   };
+
+  const getLocalReply = (question, userName) => {
+    if (!question || !userName) return null;
+
+    const normalized = question.trim().toLowerCase();
+    const firstName = userName.split(" ")[0] || userName;
+
+    const greetingPattern =
+      /^(hi|hello|hey|good\s+(morning|afternoon|evening))(\b|[!,.\s])/;
+    if (greetingPattern.test(normalized)) {
+      return `Hello ${firstName}! How can I help you today?`;
+    }
+
+    const nameQuestionPattern =
+      /\b(my name|who am i|what is my name|tell me my name|please tell me my name)\b/;
+    if (nameQuestionPattern.test(normalized)) {
+      return `You are logged in as ${userName}.`;
+    }
+
+    return null;
+  };
+
   const detectDocumentRequest = (text) => {
     const prompt = text.toLowerCase();
 
@@ -614,6 +636,31 @@ function ChatBoard() {
           : s,
       ),
     );
+
+    const localReply = getLocalReply(question, userName);
+    if (localReply) {
+      const assistantResponse = {
+        ...assistantMessage,
+        content: localReply,
+      };
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === chatId
+            ? {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMessage.id ? assistantResponse : m,
+                ),
+              }
+            : s,
+        ),
+      );
+
+      await saveMessageToDB(chatId, "assistant", localReply);
+      setLoading(false);
+      return;
+    }
 
     try {
       controllerRef.current = new AbortController();
